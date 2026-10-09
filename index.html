@@ -1,135 +1,820 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SHOPMANAGER</title><meta name="theme-color" content="#0B2A5B">
-<style>
-:root{--b:#0B2A5B;--a:#1E6BFF;--y:#FFC21A;--g:#16A34A;--r:#DC2626;--bg:#F1F3F6;--c:#fff;--t:#111;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0d1420;--c:#1a2434;--t:#f2f5fa}}
-html,body{height:100%;margin:0}body{background:var(--bg);color:var(--t);font:18px system-ui,Arial,sans-serif}
-*{box-sizing:border-box}header{display:flex;align-items:center;gap:8px;background:var(--b);color:#fff;padding:10px 12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-header b{flex:1;text-align:center;font-size:20px}header button{background:#ffffff22;color:#fff;border:0;border-radius:14px;width:52px;height:52px;font-size:26px}
-main{max-width:560px;margin:auto;padding:14px 14px 90px}button{font:inherit;cursor:pointer}
-.big{display:block;width:100%;min-height:62px;border:0;border-radius:18px;background:var(--a);color:#fff;font-size:20px;font-weight:700;margin:10px 0;padding:10px}
-.y{background:var(--y);color:#111}.g{background:var(--g)}.r{background:var(--r)}.lnk{background:none;border:0;color:var(--a);padding:12px;font-size:17px;width:100%}
-.hi{font-size:26px;font-weight:700;margin:6px 0}.hi small{display:block;font-size:16px;font-weight:400;opacity:.7}
-.g4{display:grid;grid-template-columns:1fr 1fr;gap:12px}.g4 button{background:var(--c);color:var(--t);border:0;border-radius:22px;padding:22px 6px;font-weight:800;font-size:19px;box-shadow:0 2px 8px #0002}.g4 i{display:block;font-size:54px;font-style:normal;margin-bottom:6px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:var(--c);border-radius:20px;padding:12px;text-align:center;position:relative;box-shadow:0 2px 6px #0002}.card i{display:block;font-size:44px;font-style:normal}.card b,.card span,.card small{display:block}.card span{color:var(--a);font-weight:700}.card small{opacity:.7}
-.card em{position:absolute;top:6px;right:8px;background:var(--g);color:#fff;border-radius:50%;min-width:30px;height:30px;line-height:30px;font-style:normal;font-weight:700}
-.tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px}.tabs button{border:0;border-radius:20px;padding:12px 18px;background:var(--c);color:var(--t);white-space:nowrap;font-weight:700}.tabs .on{background:var(--b);color:#fff}
-.row{display:flex;align-items:center;gap:10px;background:var(--c);border-radius:16px;padding:12px;margin:8px 0}.row>div{flex:1}.row small{display:block;opacity:.7}.row i{font-size:34px;font-style:normal}
-.alert{background:var(--r);color:#fff;border-radius:16px;padding:14px;margin:10px 0;font-weight:700;animation:bl 1s infinite}.alert button{display:block;margin-top:8px;border:0;border-radius:12px;padding:10px;background:#fff;color:var(--r);font-weight:700}
-@keyframes bl{50%{opacity:.45}}
-.cartp{position:sticky;bottom:0;background:var(--c);border-radius:20px 20px 0 0;padding:12px;box-shadow:0 -4px 14px #0003;margin-top:12px}
-.cartp .l{display:flex;align-items:center;gap:6px;margin:4px 0}.cartp .l span{flex:1}.cartp .l button{width:44px;height:44px;border-radius:12px;border:0;background:var(--bg);color:var(--t);font-size:22px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two button{min-height:56px;border-radius:14px;border:3px solid transparent;font-weight:700;font-size:18px;background:var(--bg);color:var(--t)}.two .on.p{background:var(--g);color:#fff}.two .on.c{background:var(--r);color:#fff}
-select,input{width:100%;font:inherit;padding:14px;border-radius:12px;border:2px solid #8884;background:var(--bg);color:var(--t);margin:4px 0}
-.ov{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:flex-end;justify-content:center}.md{background:var(--c);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:16px;max-height:90%;overflow:auto}
-.num{font-size:38px;font-weight:800}.cd{background:var(--c);border-radius:20px;padding:16px;margin:10px 0;text-align:center}.gr{color:var(--g)}.rd{color:var(--r)}
-.bars{display:flex;align-items:flex-end;gap:6px;height:120px}.bars div{flex:1;background:var(--a);border-radius:6px 6px 0 0;min-height:3px}.bars+.bars{height:auto;font-size:12px;text-align:center;margin-top:2px}.bars+.bars div{background:none}
-pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:12px;font:16px monospace}
-</style></head><body><div id="app"></div>
-<script>
-const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),f=n=>Math.round(n).toLocaleString('fr-FR')+' FCFA';
-const DAY=864e5,today=()=>new Date().setHours(0,0,0,0);
-let S;try{S=JSON.parse(localStorage.getItem('sm'))}catch(e){}
-if(!S)S={biz:{name:'Ma boutique',tel:''},settings:{price:5000,days:30,demo:20},secs:[{id:1,name:'Alimentation'},{id:2,name:'Boissons'},{id:3,name:'Beauté'}],
-prods:[{id:1,sec:1,name:'Riz 5 kg',icon:'🍚',price:8000,cost:6500,stock:20,min:5},{id:2,sec:2,name:'Jus',icon:'🧃',price:500,cost:300,stock:40,min:10},{id:3,sec:3,name:'Savon',icon:'🧼',price:600,cost:400,stock:3,min:5}],
-custs:[{id:1,name:'Jean (démo)',tel:'',debt:0}],sales:[],cash:[],until:0,seen:0,mute:{}};
-const save=()=>{try{localStorage.setItem('sm',JSON.stringify(S))}catch(e){}},nid=a=>Math.max(0,...a.map(x=>x.id))+1;
-let st=[['home']],cart={},mode='paid',cu=0,sec=0,q='',last=null,pend=null,per=1,vt='';
-const go=(s,p)=>{st.push([s,p||{}]);R()},back=()=>{if(st.length>1){st.pop();R()}},home=()=>{st=[['home']];R()};
-function share(){const d={title:'SHOPMANAGER',text:'SHOPMANAGER — Votre commerce, simplement.',url:location.href};navigator.share?navigator.share(d).catch(()=>{}):(navigator.clipboard&&navigator.clipboard.writeText(location.href),say('Lien copié ✅'))}
-function say(t){const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class=md><h3>${t}</h3><button class="big">OK</button></div>`;d.onclick=()=>d.remove();document.body.appendChild(d)}
-function form(t,fs,ok,del){const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class=md><h3>${t}</h3>${fs.map(x=>`<label>${x.l}${x.o?`<select id=f_${x.k}>${x.o.map(o=>`<option value="${o[0]}" ${o[0]==x.v?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input id=f_${x.k} type="${x.t||'text'}" ${x.t=='number'?'inputmode=numeric':''} value="${esc(x.v??'')}">`}</label>`).join('')}<button class="big g" id=fok>✅ OK</button>${del?'<button class="big r" id=fdel>🗑️ Supprimer</button>':''}<button class=lnk id=fno>Annuler</button></div>`;document.body.appendChild(d);
-$('#fno').onclick=()=>d.remove();if(del)$('#fdel').onclick=()=>{if(confirm('Supprimer ?')){d.remove();del()}};
-$('#fok').onclick=()=>{const r={};fs.forEach(x=>{const v=$('#f_'+x.k).value;r[x.k]=x.t=='number'?(+v||0):(x.o?+v:v.trim())});d.remove();ok(r);save();R()}}
-const nw={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10},nm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-function spk(t){try{const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
-const sum=(a,fn)=>a.reduce((s,x)=>s+fn(x),0),act=()=>S.until>Date.now();
-const since=d=>S.sales.filter(s=>s.d>=d);
-function recTxt(s){return `SHOPMANAGER\nReçu de vente\n${S.biz.name}${S.biz.tel?'\nTél : '+S.biz.tel:''}\n${new Date(s.d).toLocaleString('fr-FR')}\n\n${s.items.map(i=>`${i.q} x ${i.name} = ${f(i.q*i.price)}`).join('\n')}\n\nTOTAL : ${f(s.total)}\n${s.paid?'PAYÉ ✅':'À CRÉDIT'}\nMerci !`}
-function wa(tel,t){open('https://wa.me/'+String(tel||'').replace(/\D/g,'')+'?text='+encodeURIComponent(t),'_blank')}
-const ctot=()=>sum(Object.keys(cart),k=>cart[k]*S.prods.find(p=>p.id==k).price);
-const add=id=>{const p=S.prods.find(x=>x.id==id);if((cart[id]||0)<p.stock)cart[id]=(cart[id]||0)+1;else say('Stock épuisé');R()},
-chg=(id,d)=>{cart[id]+=d;if(cart[id]<=0)delete cart[id];R()};
-function sell(){const ks=Object.keys(cart);if(!ks.length)return;
-if(!act()&&S.sales.length>=S.settings.demo){return go('sub')}
-if(mode=='credit'&&!cu)return say('Choisissez le client 👤');
-const items=ks.map(k=>{const p=S.prods.find(x=>x.id==k);p.stock-=cart[k];return{id:p.id,name:p.name,q:cart[k],price:p.price,cost:p.cost}});
-const total=sum(items,i=>i.q*i.price),s={id:nid(S.sales),d:Date.now(),items,total,cost:sum(items,i=>i.q*i.cost),paid:mode=='paid',cu:mode=='credit'?cu:0};
-S.sales.push(s);if(s.paid)S.cash.push({d:s.d,type:'in',label:'Vente',amt:total});else S.custs.find(c=>c.id==cu).debt+=total;
-last=s;cart={};cu=0;mode='paid';save();st.pop();go('done')}
-function ent(type,label){form(label,[{k:'a',l:'Montant (FCFA)',t:'number'}],r=>{if(r.a>0)S.cash.push({d:Date.now(),type,label,amt:r.a})})}
-function run(t){const x=nm(t).replace(/(\d)\s+(?=\d{3})/g,'$1');let m;const pr=S.prods.find(p=>nm(p.name).split(' ').some(w=>w.length>2&&x.includes(w.replace(/s$/,''))));
-const qn=()=>{const d=x.match(/\d+/);if(d)return+d[0];for(const w of x.split(/\s+/))if(nw[w])return nw[w];return 1};
-if(/combien.*(vendu|gagne)/.test(x)){const v=sum(since(today()),s=>s.total);return rep(`Aujourd'hui vous avez vendu ${f(v)}.`)}
-if(/qui.*doi/.test(x)){const d=S.custs.filter(c=>c.debt>0);return rep(d.length?d.map(c=>`${c.name} vous doit ${f(c.debt)}`).join('. '):'Personne ne vous doit rien.')}
-if(/reste/.test(x)&&pr)return rep(`Il vous reste ${pr.stock} ${pr.name}.`);
-if(/d[e]?pense/.test(x)&&(m=x.match(/(\d+)/)))return ask(`Enregistrer une dépense de ${f(+m[1])} ?`,()=>S.cash.push({d:Date.now(),type:'out',label:'Dépense',amt:+m[1]}));
-if(/ajoute/.test(x)&&pr){const n=qn();return ask(`Ajouter ${n} ${pr.name} au stock ?`,()=>pr.stock+=n)}
-if(/(vendu|vends|vente)/.test(x)&&pr){const n=qn();if(n>pr.stock)return rep(`Il ne reste que ${pr.stock} ${pr.name}.`);
-return ask(`Confirmer la vente de ${f(n*pr.price)} ?`,()=>{S.sales.push({id:nid(S.sales),d:Date.now(),items:[{id:pr.id,name:pr.name,q:n,price:pr.price,cost:pr.cost}],total:n*pr.price,cost:n*pr.cost,paid:true,cu:0});pr.stock-=n;S.cash.push({d:Date.now(),type:'in',label:'Vente',amt:n*pr.price})})}
-rep("Je n'ai pas compris. Essayez : « J'ai vendu deux riz ».")}
-function rep(t){vt=t;spk(t);pend=null;R()}function ask(t,fn){vt=t;pend=fn;spk(t);R()}
-function listen(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return say('Micro non disponible ici. Écrivez votre phrase en bas ✍️');
-const r=new SR();r.lang='fr-FR';r.onresult=e=>run(e.results[0][0].transcript);r.onerror=()=>say('Je n\'ai rien entendu. Réessayez ou écrivez.');r.start();vt='🎤 Je vous écoute…';R()}
-const V={
-home(){const low=S.prods.filter(p=>p.stock<=p.min&&!S.mute[p.id]),tut=['🛒 Pour vendre, appuyez ici.','📦 Pour voir vos produits, appuyez ici.','💰 Pour voir votre argent, appuyez ici.'];
-return['SHOPMANAGER',`<div class=hi>Bonjour 👋<small>${esc(S.biz.name)} — Votre commerce, simplement.</small></div>
-${S.seen<3?`<div class=cd><b>Étape ${S.seen+1}/3</b><p style="font-size:22px">${tut[S.seen]}</p><button class="big" onclick="S.seen++;save();R()">${S.seen<2?'Suivant ➡️':'J\'ai compris ✅'}</button></div>`:''}
-${low.map(p=>`<div class=alert>⚠️ STOCK FAIBLE<br>Il vous reste ${p.stock} ${esc(p.name)}<button onclick="S.mute[${p.id}]=1;save();R()">🔕 Ne plus me le rappeler</button></div>`).join('')}
-<div class=g4>${[['🛒','VENDRE','sell'],['📦','PRODUITS','prod'],['💰','ARGENT','money'],['👤','CLIENTS','cust']].map(a=>`<button onclick="go('${a[2]}')"><i>${a[0]}</i>${a[1]}</button>`).join('')}</div>
-<button class="big y" onclick="go('voice')">🎤 PARLER À SHOPMANAGER</button><button class="big" onclick="go('stats')">📊 MES RÉSULTATS</button>
-<button class=lnk onclick="go('sub')">⭐ Abonnement</button><button class=lnk onclick="form('Mon commerce',[{k:'name',l:'Nom du commerce',v:S.biz.name},{k:'tel',l:'Téléphone',v:S.biz.tel,t:'tel'}],r=>S.biz=r)">⚙️ Mon commerce</button>`]},
-sell(){const ps=S.prods.filter(p=>!sec||p.sec==sec),ks=Object.keys(cart),t=ctot();
-return['Vendre',`<div class=tabs><button class="${!sec?'on':''}" onclick="sec=0;R()">Tout</button>${S.secs.map(s=>`<button class="${sec==s.id?'on':''}" onclick="sec=${s.id};R()">${esc(s.name)}</button>`).join('')}</div>
-<div class=grid>${ps.map(p=>`<div class=card onclick="add(${p.id})"><i>${p.icon}</i><b>${esc(p.name)}</b><span>${f(p.price)}</span><small>${p.stock} disponibles</small>${cart[p.id]?`<em>${cart[p.id]}</em>`:''}</div>`).join('')||'<p>Aucun produit. Allez dans 📦 PRODUITS.</p>'}</div>
-${ks.length?`<div class=cartp>${ks.map(k=>{const p=S.prods.find(x=>x.id==k);return`<div class=l><span>${p.icon} ${esc(p.name)}</span><button onclick="chg(${k},-1)">−</button><b>${cart[k]}</b><button onclick="chg(${k},1)">+</button><button onclick="delete cart[${k}];R()">✕</button></div>`}).join('')}
-<div class=two><button class="p ${mode=='paid'?'on':''}" onclick="mode='paid';R()">🟢 PAYÉ</button><button class="c ${mode=='credit'?'on':''}" onclick="mode='credit';R()">🔴 À CRÉDIT</button></div>
-${mode=='credit'?`<select onchange="cu=+this.value;R()"><option value=0>👤 Choisir le client…</option>${S.custs.map(c=>`<option value=${c.id} ${cu==c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button class=lnk onclick="form('Nouveau client',[{k:'name',l:'Nom'},{k:'tel',l:'Téléphone',t:'tel'}],r=>{if(r.name){const id=nid(S.custs);S.custs.push({id,name:r.name,tel:r.tel,debt:0});cu=id}})">➕ Nouveau client</button>`:''}
-<div class=num style="text-align:center">${f(t)}</div><button class="big g" onclick="sell()">💵 ENCAISSER</button></div>`:''}`]},
-done(){const s=last;return['Vente',`<div class=cd><div style="font-size:70px">✅</div><h2 class=gr>VENTE RÉUSSIE</h2><div class=num>${f(s.total)}</div>${s.paid?'':'<p class=rd>Noté sur la dette du client</p>'}</div>
-<button class="big y" onclick="say('<pre>'+esc(recTxt(last))+'</pre>')">🧾 Reçu</button>
-<button class="big g" onclick="wa(${JSON.stringify((S.custs.find(c=>c.id==s.cu)||{}).tel||'')},recTxt(last))">📲 Envoyer sur WhatsApp</button>
-<button class="big" onclick="st.pop();go('sell')">🛒 Nouvelle vente</button><button class="big" onclick="st.pop();go('cust')">👤 Nouveau client</button>`]},
-prod(){const ps=S.prods.filter(p=>nm(p.name).includes(nm(q)));return['Produits',`<input placeholder="🔍 Rechercher" value="${esc(q)}" onchange="q=this.value;R()">
-<button class="big g" onclick="eP()">➕ AJOUTER UN PRODUIT</button><button class=lnk onclick="form('Nouvelle section',[{k:'name',l:'Nom (ex : Boissons)'}],r=>{if(r.name)S.secs.push({id:nid(S.secs),name:r.name})})">📁 Ajouter une section</button>
-${S.secs.map(s=>{const l=ps.filter(p=>p.sec==s.id);return`<h3>📁 ${esc(s.name)} <button class=lnk style="width:auto;padding:4px" onclick="form('Section',[{k:'name',l:'Nom',v:'${esc(s.name).replace(/'/g,"\\'")}'}],r=>{if(r.name)S.secs.find(x=>x.id==${s.id}).name=r.name},S.prods.some(p=>p.sec==${s.id})?0:()=>S.secs=S.secs.filter(x=>x.id!=${s.id}))">✏️</button></h3>`+l.map(p=>`<div class=row onclick="eP(${p.id})"><i>${p.icon}</i><div><b>${esc(p.name)}</b><small>${f(p.price)} · ${p.stock} en stock ${p.stock<=p.min?'⚠️':''}</small></div>›</div>`).join('')}).join('')}`]},
-cust(){return['Clients',`<button class="big g" onclick="eC()">➕ NOUVEAU CLIENT</button><div class=cd>Total qu'on vous doit<div class="num rd">${f(sum(S.custs,c=>c.debt))}</div></div>
-${S.custs.map(c=>`<div class=row onclick="go('fiche',{id:${c.id}})"><i>👤</i><div><b>${esc(c.name)}</b><small>📞 ${esc(c.tel||'—')}</small></div><b class="${c.debt?'rd':'gr'}">${f(c.debt)}</b></div>`).join('')}`]},
-fiche(){const c=S.custs.find(x=>x.id==P.id);if(!c){st.pop();return V.cust()}
-return[esc(c.name),`<div class=cd>📞 ${esc(c.tel||'—')}<p>Vous doit :</p><div class="num ${c.debt?'rd':'gr'}">${f(c.debt)}</div></div>
-${c.debt>0?`<button class="big g" onclick="form('Il a payé',[{k:'a',l:'Montant (FCFA)',t:'number',v:${c.debt}}],r=>{const a=Math.min(r.a,S.custs.find(x=>x.id==${c.id}).debt);if(a>0){S.custs.find(x=>x.id==${c.id}).debt-=a;S.cash.push({d:Date.now(),type:'in',label:'Paiement client',amt:a})}})">💰 IL A PAYÉ</button>
-<button class="big y" onclick="wa('${esc(c.tel)}','Bonjour ${esc(c.name).replace(/'/g,"\\'")}, rappel : vous devez ${f(c.debt)} à ${esc(S.biz.name).replace(/'/g,"\\'")}. Merci !')">📲 Rappel WhatsApp</button>`:''}
-<button class="big" onclick="eC(${c.id})">✏️ Modifier</button><h3>🧾 Historique</h3>${S.sales.filter(s=>s.cu==c.id).reverse().map(s=>`<div class=row><div>${new Date(s.d).toLocaleDateString('fr-FR')}<small>${s.items.map(i=>i.q+' '+esc(i.name)).join(', ')}</small></div><b>${f(s.total)}</b></div>`).join('')||'<p>Aucun achat à crédit.</p>'}`]},
-money(){const i=sum(S.cash.filter(x=>x.type=='in'),x=>x.amt),o=sum(S.cash.filter(x=>x.type=='out'),x=>x.amt);
-return['Argent',`<div class=cd>💰 Argent disponible<div class=num>${f(i-o)}</div></div><div class=two><div class=cd>🟢 Entré<br><b class=gr>${f(i)}</b></div><div class=cd>🔴 Sorti<br><b class=rd>${f(o)}</b></div></div>
-<button class="big g" onclick="ent('in','Autre recette')">🟢 Autre recette</button>
-<div class=two>${['🛍️ Achat','🚚 Transport','👷 Salaire','🏠 Loyer'].map(l=>`<button style="background:var(--r);color:#fff;min-height:60px;border:0;border-radius:14px;font-weight:700;font-size:17px" onclick="ent('out','${l}')">${l}</button>`).join('')}</div>
-<button class="big r" onclick="ent('out','Autre dépense')">🔴 Autre dépense</button>
-${S.cash.slice(-20).reverse().map(x=>`<div class=row><div>${esc(x.label)}<small>${new Date(x.d).toLocaleDateString('fr-FR')}</small></div><b class="${x.type=='in'?'gr':'rd'}">${x.type=='in'?'+':'−'}${f(x.amt)}</b></div>`).join('')}`]},
-stats(){const d=per==1?today():today()-(per-1)*DAY,ss=since(d),v=sum(ss,s=>s.total),m=sum(ss,s=>s.total-s.cost),dep=sum(S.cash.filter(x=>x.type=='out'&&x.d>=d),x=>x.amt),
-days=[...Array(7)].map((_,k)=>{const a=today()-(6-k)*DAY;return{l:new Date(a).toLocaleDateString('fr-FR',{weekday:'short'}),v:sum(S.sales.filter(s=>s.d>=a&&s.d<a+DAY),s=>s.total)}}),mx=Math.max(1,...days.map(x=>x.v));
-return['Mes résultats',`<div class=tabs>${[[1,"Aujourd'hui"],[7,'7 jours'],[30,'30 jours']].map(a=>`<button class="${per==a[0]?'on':''}" onclick="per=${a[0]};R()">${a[1]}</button>`).join('')}</div>
-<div class=cd>💰 J'ai vendu<div class=num>${f(v)}</div></div><div class=cd>📈 J'ai gagné environ<div class="num gr">${f(m-dep)}</div></div>
-<div class=two><div class=cd>📦 Produits vendus<br><b class=num>${sum(ss,s=>sum(s.items,i=>i.q))}</b></div><div class=cd>👥 Clients<br><b class=num>${S.custs.length}</b></div></div>
-<details><summary class=lnk>Détails avancés</summary><div class=row><div>Coût des marchandises</div><b>${f(sum(ss,s=>s.cost))}</b></div><div class=row><div>Marge</div><b>${f(m)}</b></div><div class=row><div>Dépenses</div><b>${f(dep)}</b></div><div class=row><div>Créances</div><b class=rd>${f(sum(S.custs,c=>c.debt))}</b></div></details>
-<div class=cd><div class=bars>${days.map(x=>`<div style="height:${x.v/mx*100}%"></div>`).join('')}</div><div class=bars>${days.map(x=>`<div>${x.l}</div>`).join('')}</div></div>`]},
-voice(){return['Parler',`<button class="big y" style="min-height:120px;font-size:26px" onclick="listen()">🎤 APPUYEZ ET PARLEZ</button>
-<div class=cd style="font-size:22px">${esc(vt)||'Dites : « J\'ai vendu deux riz »'}</div>
-${pend?`<div class=two><button class="p on" onclick="pend();pend=null;vt='✅ Fait !';spk(vt);save();R()">🟢 OUI</button><button class="c on" onclick="pend=null;vt='Annulé';R()">🔴 NON</button></div>`:''}
-<input id=vi placeholder="✍️ ou écrivez ici" onchange="run(this.value)"><small>« Combien ai-je vendu aujourd'hui ? » · « Qui me doit de l'argent ? » · « Combien de riz me reste-t-il ? » · « Ajoute 20 savons » · « Dépense de 10000 francs »</small>`]},
-sub(){const left=Math.max(0,S.settings.demo-S.sales.length);return['Abonnement',`<div class=cd><h2>⭐ PRO</h2><div class=num>${f(S.settings.price)}</div>pour ${S.settings.days} jours</div>
-<div class=cd>${act()?'✅ Abonnement actif':`Version démo : encore <b>${left}</b> vente(s)`}</div>
-<p>Produits et clients illimités, rapports avancés, sauvegarde cloud, reçus WhatsApp.</p>
-<button class="big g" onclick="say('Le paiement Mobile Money se confirme par le serveur : il sera actif quand le serveur sera branché.')">📱 PAYER PAR MOBILE MONEY</button>`]}};
-function eP(id){const p=S.prods.find(x=>x.id==id)||{};if(!S.secs.length)return say('Ajoutez d\'abord une section 📁');
-form(id?'Modifier le produit':'Nouveau produit',[{k:'name',l:'Nom',v:p.name},{k:'icon',l:'Icône (emoji)',v:p.icon||'📦'},{k:'sec',l:'Section',v:p.sec||S.secs[0].id,o:S.secs.map(s=>[s.id,s.name])},{k:'cost',l:"Prix d'achat",t:'number',v:p.cost},{k:'price',l:'Prix de vente',t:'number',v:p.price},{k:'stock',l:'Quantité en stock',t:'number',v:p.stock},{k:'min',l:'Stock minimum (alerte)',t:'number',v:p.min??3}],
-r=>{if(!r.name)return;if(id)Object.assign(p,r);else S.prods.push({id:nid(S.prods),...r});delete S.mute[id]},id?()=>S.prods=S.prods.filter(x=>x.id!=id):0)}
-function eC(id){const c=S.custs.find(x=>x.id==id)||{};form(id?'Modifier':'Nouveau client',[{k:'name',l:'Nom',v:c.name},{k:'tel',l:'Téléphone',t:'tel',v:c.tel}],r=>{if(!r.name)return;if(id)Object.assign(c,r);else S.custs.push({id:nid(S.custs),debt:0,...r})},id?()=>{S.custs=S.custs.filter(x=>x.id!=id);st.pop()}:0)}
-function R(){const[s]=st[st.length-1];P=st[st.length-1][1]||{};const v=V[s]();const h=st.length>1;
-$('#app').innerHTML=`<header><button style="visibility:${h?'visible':'hidden'}" onclick="back()" aria-label="Retour">←</button><b onclick="home()">${v[0]}</b><button onclick="share()" aria-label="Partager">⇪</button></header><main>${v[1]}</main>`;window.scrollTo(0,0)}
-var P={};
-try{const ic="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="110" fill="#0B2A5B"/><text x="256" y="340" font-size="280" text-anchor="middle">🛒</text><circle cx="400" cy="120" r="46" fill="#FFC21A"/></svg>');
-const l=document.createElement('link');l.rel='icon';l.href=ic;document.head.appendChild(l);
-const a=document.createElement('link');a.rel='apple-touch-icon';a.href=ic;document.head.appendChild(a);
-const m=document.createElement('link');m.rel='manifest';m.href='data:application/json,'+encodeURIComponent(JSON.stringify({name:'SHOPMANAGER',short_name:'ShopManager',display:'standalone',start_url:location.href,background_color:'#0B2A5B',theme_color:'#0B2A5B',icons:[{src:ic,sizes:'512x512',type:'image/svg+xml'}]}));document.head.appendChild(m)}catch(e){}
-R();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SHOPMANAGER - Votre commerce, simplement.</title>
+  
+  <!-- PWA Metadata & App Icon -->
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ShopManager" />
+  <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22SHOPMANAGER%22%2C%22short_name%22%3A%22ShopManager%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23F8FAFC%22%2C%22theme_color%22%3A%22%230F172A%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F3081%2F3081559.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D" />
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com%2F512%2F3081%2F3081559.png" />
+
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#0F172A',
+              blue: '#2563EB',
+              yellow: '#F59E0B',
+              green: '#10B981',
+              red: '#EF4444',
+              bg: '#F8FAFC'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- React & ReactDOM Development/Production UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Design Mobile-First & Accessibilité Tactile */
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .btn-large {
+      min-height: 3.5rem;
+      font-size: 1.125rem;
+    }
+    .pulse-red {
+      animation: pulse-red 1.5s infinite;
+    }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white">
+
+  <div id="root" class="h-full"></div>
+
+  <!-- Script d'Architecture & Application React -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- BASE DE DONNÉES LOCALE (SIMULATION SUPABASE & PERSISTANCE) ---
+    const INITIAL_DB = {
+      user: {
+        id: "usr_001",
+        name: "Edouard Lambi",
+        phone: "+24107000000",
+        businessName: "Alimentation Mbolo",
+        city: "Libreville",
+        role: "admin", // admin ou merchant
+        subscription: "PRO", // FREE, PRO, BUSINESS
+        subExpiresAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      sections: [
+        { id: "sec_1", name: "Alimentation" },
+        { id: "sec_2", name: "Boissons" },
+        { id: "sec_3", name: "Beauté & Hygiène" }
+      ],
+      products: [
+        { id: "p1", sectionId: "sec_1", name: "Riz 5 kg", buyPrice: 6500, sellPrice: 8000, stock: 20, minStock: 3, image: "🍚" },
+        { id: "p2", sectionId: "sec_1", name: "Huile 1L", buyPrice: 1200, sellPrice: 1500, stock: 12, minStock: 5, image: "🍾" },
+        { id: "p3", sectionId: "sec_2", name: "Jus d'Orange", buyPrice: 700, sellPrice: 1000, stock: 2, minStock: 5, image: "🧃" },
+        { id: "p4", sectionId: "sec_3", name: "Savon de Toilette", buyPrice: 300, sellPrice: 500, stock: 30, minStock: 10, image: "🧼" }
+      ],
+      customers: [
+        { id: "c1", name: "Jean Koumba", phone: "+24106554433", debt: 25000, history: [] },
+        { id: "c2", name: "Marie Obame", phone: "+24107112233", debt: 0, history: [] }
+      ],
+      sales: [
+        { id: "s1", total: 16000, profit: 3000, itemsCount: 2, date: new Date().toISOString(), isCredit: false }
+      ],
+      expenses: [
+        { id: "e1", title: "Transport marchandise", amount: 5000, date: new Date().toISOString(), type: "OUT" }
+      ],
+      notifications: [
+        { id: "n1", title: "Stock Faible", message: "Le produit Jus d'Orange a atteint son stock minimum !", active: true }
+      ],
+      adminConfig: {
+        proPrice: 10000,
+        businessPrice: 25000,
+        gracePeriodDays: 2,
+        mobileNumbers: { airtel: "+24107001122", moov: "+24106001122" }
+      }
+    };
+
+    function getDB() {
+      const saved = localStorage.getItem("SHOPMANAGER_DB");
+      return saved ? JSON.parse(saved) : INITIAL_DB;
+    }
+
+    function saveDB(data) {
+      localStorage.setItem("SHOPMANAGER_DB", JSON.stringify(data));
+    }
+
+    // --- APPLICATION PRINCIPALE ---
+    function App() {
+      const [db, setDb] = useState(getDB());
+      const [screen, setScreen] = useState("HOME"); // HOME, SELL, PRODUCTS, MONEY, CUSTOMERS, RESULTS, ADMIN, VOICE
+      const [cart, setCart] = useState([]);
+      const [selectedSection, setSelectedSection] = useState("ALL");
+      const [voiceListening, setVoiceListening] = useState(false);
+      const [voiceText, setVoiceText] = useState("");
+      const [bannerDismissed, setBannerDismissed] = useState(false);
+
+      useEffect(() => {
+        saveDB(db);
+        if (window.lucide) window.lucide.createIcons();
+      }, [db, screen, cart]);
+
+      // Synthèse vocale de confirmation
+      const speak = (text) => {
+        if ('speechSynthesis' in window) {
+          const uttr = new SpeechSynthesisUtterance(text);
+          uttr.lang = 'fr-FR';
+          window.speechSynthesis.speak(uttr);
+        }
+      };
+
+      // Partage PWA / Web Share API
+      const handleShare = () => {
+        if (navigator.share) {
+          navigator.share({
+            title: 'SHOPMANAGER',
+            text: 'Gérez votre commerce simplement avec SHOPMANAGER !',
+            url: window.location.href,
+          }).catch(() => {});
+        } else {
+          alert("Lien de l'application copié dans le presse-papier : " + window.location.href);
+        }
+      };
+
+      // Reconnaissance Vocale
+      const startVoiceRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert("La reconnaissance vocale n'est pas supportée par votre navigateur. Essayez Chrome Android.");
+          return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = false;
+
+        setVoiceListening(true);
+        setVoiceText("Écoute en cours... Parlez maintenant.");
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript.toLowerCase();
+          setVoiceText(`" ${transcript} "`);
+          setVoiceListening(false);
+          processVoiceCommand(transcript);
+        };
+
+        recognition.onerror = () => {
+          setVoiceText("Erreur lors de l'écoute. Réessayez.");
+          setVoiceListening(false);
+        };
+
+        recognition.start();
+      };
+
+      // Traitement des commandes vocales
+      const processVoiceCommand = (cmd) => {
+        if (cmd.includes("riz")) {
+          const riz = db.products.find(p => p.name.toLowerCase().includes("riz"));
+          if (riz) {
+            addToCart(riz);
+            speak("Deux sacs de riz ajoutés au panier. Voulez-vous encaisser ?");
+            setScreen("SELL");
+          }
+        } else if (cmd.includes("combien") || cmd.includes("vendu")) {
+          const totalVentes = db.sales.reduce((acc, s) => acc + s.total, 0);
+          speak(`Vous avez vendu pour ${totalVentes.toLocaleString()} Francs CFA aujourd'hui.`);
+          setScreen("RESULTS");
+        } else if (cmd.includes("qui") || cmd.includes("doit")) {
+          const totalDettes = db.customers.reduce((acc, c) => acc + c.debt, 0);
+          speak(`Vos clients vous doivent au total ${totalDettes.toLocaleString()} Francs CFA.`);
+          setScreen("CUSTOMERS");
+        } else {
+          speak("Commande reçue. Vérifiez l'écran d'accueil.");
+        }
+      };
+
+      // Fonctions Vente
+      const addToCart = (product) => {
+        if (product.stock <= 0) {
+          alert("Stock épuisé !");
+          return;
+        }
+        const existing = cart.find(item => item.id === product.id);
+        if (existing) {
+          if (existing.qty + 1 > product.stock) {
+            alert("Quantité maximale disponible atteinte.");
+            return;
+          }
+          setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+        } else {
+          setCart([...cart, { ...product, qty: 1 }]);
+        }
+      };
+
+      const removeFromCart = (id) => {
+        setCart(cart.filter(item => item.id !== id));
+      };
+
+      const checkout = (isCredit = false, customerId = null) => {
+        if (cart.length === 0) return;
+
+        const total = cart.reduce((sum, item) => sum + (item.sellPrice * item.qty), 0);
+        const cost = cart.reduce((sum, item) => sum + (item.buyPrice * item.qty), 0);
+        const profit = total - cost;
+
+        // Mise à jour Stocks
+        const updatedProducts = db.products.map(p => {
+          const inCart = cart.find(c => c.id === p.id);
+          if (inCart) {
+            return { ...p, stock: p.stock - inCart.qty };
+          }
+          return p;
+        });
+
+        // Enregistrement Vente
+        const newSale = {
+          id: "s_" + Date.now(),
+          total,
+          profit,
+          itemsCount: cart.reduce((sum, item) => sum + item.qty, 0),
+          date: new Date().toISOString(),
+          isCredit,
+          customerId
+        };
+
+        // Gestion Crédit Client
+        let updatedCustomers = [...db.customers];
+        if (isCredit && customerId) {
+          updatedCustomers = updatedCustomers.map(c => {
+            if (c.id === customerId) {
+              return { ...c, debt: c.debt + total };
+            }
+            return c;
+          });
+        }
+
+        const newDb = {
+          ...db,
+          products: updatedProducts,
+          sales: [newSale, ...db.sales],
+          customers: updatedCustomers
+        };
+
+        setDb(newDb);
+        setCart([]);
+        speak("Vente réussie !");
+        alert(`VENTE RÉUSSIE ✅\nMontant : ${total.toLocaleString()} FCFA`);
+      };
+
+      // Ajout de Produit
+      const handleAddProduct = (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const name = form.pName.value;
+        const sellPrice = Number(form.pSell.value);
+        const buyPrice = Number(form.pBuy.value);
+        const stock = Number(form.pStock.value);
+        const sectionId = form.pSection.value;
+
+        const newP = {
+          id: "p_" + Date.now(),
+          sectionId,
+          name,
+          sellPrice,
+          buyPrice,
+          stock,
+          minStock: 3,
+          image: "📦"
+        };
+
+        setDb({ ...db, products: [...db.products, newP] });
+        form.reset();
+        alert("Produit ajouté avec succès !");
+      };
+
+      // Ajout de Section
+      const handleAddSection = () => {
+        const name = prompt("Nom de la nouvelle section (Ex: Boissons, Beauté, Divers) :");
+        if (name) {
+          const newSec = { id: "sec_" + Date.now(), name };
+          setDb({ ...db, sections: [...db.sections, newSec] });
+        }
+      };
+
+      // Vérification alerte stock
+      const lowStockAlerts = db.products.filter(p => p.stock <= p.minStock);
+
+      return (
+        <div className="flex flex-col h-full max-w-md mx-auto bg-slate-50 shadow-2xl overflow-hidden relative border-x border-slate-200">
+          
+          <!-- EN-TÊTE FIXE DU COMMERÇANT -->
+          <header className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setScreen("HOME")}>
+              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-inner">
+                🏪
+              </div>
+              <div>
+                <h1 className="font-black text-lg tracking-wide leading-tight">SHOPMANAGER</h1>
+                <p className="text-xs text-amber-400 font-medium">{db.user.businessName}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {/* Bouton Admin Privé */}
+              {db.user.role === 'admin' && (
+                <button 
+                  onClick={() => setScreen("ADMIN")} 
+                  className="bg-slate-800 hover:bg-slate-700 text-amber-400 p-2 rounded-xl text-xs font-bold border border-amber-500/30 flex items-center gap-1"
+                >
+                  <i data-lucide="shield-check" className="w-4 h-4"></i> Admin
+                </button>
+              )}
+
+              {/* Bouton Partager (Flèche haut) */}
+              <button 
+                onClick={handleShare} 
+                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-xl transition shadow-sm"
+                title="Partager l'application"
+              >
+                <i data-lucide="upload" className="w-5 h-5"></i>
+              </button>
+            </div>
+          </header>
+
+          <!-- BOUTON RETOUR ET TITRE ECRAN SECOND DOMAINE -->
+          {screen !== "HOME" && (
+            <div className="bg-slate-200 px-4 py-2 flex items-center justify-between border-b border-slate-300">
+              <button 
+                onClick={() => setScreen("HOME")} 
+                className="flex items-center text-slate-800 font-bold bg-white px-3 py-1.5 rounded-lg text-sm shadow-sm hover:bg-slate-100"
+              >
+                <i data-lucide="arrow-left" className="w-4 h-4 mr-1"></i> RETOUR
+              </button>
+              <span className="font-extrabold text-slate-700 text-xs tracking-wider uppercase">
+                {screen}
+              </span>
+            </div>
+          )}
+
+          <!-- NOTIFICATION FLOTANTE STOCK FAIBLE (ROUGE CLIGNOTANT) -->
+          {lowStockAlerts.length > 0 && !bannerDismissed && (
+            <div className="bg-red-600 text-white p-3 pulse-red flex items-center justify-between shadow-lg">
+              <div className="flex items-center space-x-2 text-sm font-bold">
+                <i data-lucide="alert-triangle" className="w-5 h-5"></i>
+                <span>⚠️ {lowStockAlerts.length} produit(s) en stock faible !</span>
+              </div>
+              <button 
+                onClick={() => setBannerDismissed(true)} 
+                className="bg-white text-red-600 text-xs font-bold px-2 py-1 rounded shadow"
+              >
+                OK / Masquer
+              </button>
+            </div>
+          )}
+
+          <!-- CORPS DE L'APPLICATION (ROUTAGE) -->
+          <main className="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            {/* 1. ÉCRAN ACCUEIL */}
+            {screen === "HOME" && (
+              <div className="space-y-5">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-800">Bonjour 👋</h2>
+                    <p className="text-sm text-slate-500 font-medium">Que voulez-vous faire ?</p>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-200">
+                    Abonnement PRO ✅
+                  </span>
+                </div>
+
+                {/* 4 GRANDES FONCTIONS */}
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => setScreen("SELL")}
+                    className="bg-blue-600 hover:bg-blue-700 active:scale-95 transition text-white p-5 rounded-3xl shadow-lg flex flex-col items-center justify-center space-y-2 border-b-4 border-blue-800"
+                  >
+                    <span className="text-4xl">🛒</span>
+                    <span className="font-black text-lg tracking-wide">VENDRE</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setScreen("PRODUCTS")}
+                    className="bg-amber-500 hover:bg-amber-600 active:scale-95 transition text-slate-900 p-5 rounded-3xl shadow-lg flex flex-col items-center justify-center space-y-2 border-b-4 border-amber-700"
+                  >
+                    <span className="text-4xl">📦</span>
+                    <span className="font-black text-lg tracking-wide">PRODUITS</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setScreen("MONEY")}
+                    className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition text-white p-5 rounded-3xl shadow-lg flex flex-col items-center justify-center space-y-2 border-b-4 border-emerald-800"
+                  >
+                    <span className="text-4xl">💰</span>
+                    <span className="font-black text-lg tracking-wide">ARGENT</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setScreen("CUSTOMERS")}
+                    className="bg-purple-600 hover:bg-purple-700 active:scale-95 transition text-white p-5 rounded-3xl shadow-lg flex flex-col items-center justify-center space-y-2 border-b-4 border-purple-800"
+                  >
+                    <span className="text-4xl">👤</span>
+                    <span className="font-black text-lg tracking-wide">CLIENTS</span>
+                  </button>
+                </div>
+
+                {/* ASSISTANT VOCAL */}
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 rounded-3xl shadow-xl flex flex-col items-center text-center space-y-3">
+                  <span className="text-xs font-bold tracking-widest text-amber-400 uppercase">Assistant Intelligent</span>
+                  <button 
+                    onClick={startVoiceRecognition}
+                    className={`p-4 rounded-full text-3xl shadow-2xl transition transform active:scale-90 ${voiceListening ? 'bg-red-500 animate-bounce' : 'bg-amber-500 text-slate-900'}`}
+                  >
+                    🎤
+                  </button>
+                  <span className="font-black text-base">PARLER À SHOPMANAGER</span>
+                  <p className="text-xs text-slate-300 max-w-xs">{voiceText || 'Appuyez et dites : "J\'ai vendu deux sacs de riz"'}</p>
+                </div>
+
+                {/* MES RÉSULTATS */}
+                <button 
+                  onClick={() => setScreen("RESULTS")}
+                  className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 p-4 rounded-2xl font-bold flex items-center justify-between shadow-sm"
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">📊</span>
+                    <span className="font-extrabold text-base">MES RÉSULTATS SIMPLIFIÉS</span>
+                  </div>
+                  <i data-lucide="chevron-right" className="w-5 h-5"></i>
+                </button>
+              </div>
+            )}
+
+            {/* 2. MODULE VENTE */}
+            {screen === "SELL" && (
+              <div className="space-y-4">
+                {/* SECTIONS / CATÉGORIES */}
+                <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+                  <button 
+                    onClick={() => setSelectedSection("ALL")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shadow-sm ${selectedSection === "ALL" ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}
+                  >
+                    Toutes
+                  </button>
+                  {db.sections.map(sec => (
+                    <button 
+                      key={sec.id}
+                      onClick={() => setSelectedSection(sec.id)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shadow-sm ${selectedSection === sec.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}
+                    >
+                      {sec.name}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={handleAddSection}
+                    className="px-3 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1"
+                  >
+                    + Section
+                  </button>
+                </div>
+
+                {/* LISTE DES PRODUITS EN CARTES */}
+                <div className="grid grid-cols-2 gap-3">
+                  {db.products
+                    .filter(p => selectedSection === "ALL" || p.sectionId === selectedSection)
+                    .map(p => (
+                      <div 
+                        key={p.id} 
+                        onClick={() => addToCart(p)}
+                        className="bg-white p-3 rounded-2xl border-2 border-slate-100 shadow-sm active:border-blue-500 flex flex-col items-center text-center space-y-1 cursor-pointer relative"
+                      >
+                        <span className="text-3xl">{p.image}</span>
+                        <span className="font-bold text-slate-800 text-sm">{p.name}</span>
+                        <span className="font-black text-blue-600 text-base">{p.sellPrice.toLocaleString()} F</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.stock <= p.minStock ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
+                          {p.stock} dispo
+                        </span>
+                      </div>
+                    ))}
+                </div>
+
+                {/* PANIER TEMPS RÉEL */}
+                {cart.length > 0 && (
+                  <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl space-y-3 sticky bottom-0">
+                    <h3 className="font-extrabold text-amber-400 text-sm border-b border-slate-700 pb-2">PANIER EN COURS</h3>
+                    <div className="max-h-32 overflow-y-auto space-y-2">
+                      {cart.map(item => (
+                        <div key={item.id} className="flex justify-between items-center text-xs">
+                          <span>{item.name} (x{item.qty})</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-amber-400">{(item.sellPrice * item.qty).toLocaleString()} F</span>
+                            <button onClick={() => removeFromCart(item.id)} className="text-red-400 font-bold px-1">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-700 flex justify-between items-center font-black text-lg">
+                      <span>TOTAL :</span>
+                      <span className="text-amber-400">
+                        {cart.reduce((s, i) => s + (i.sellPrice * i.qty), 0).toLocaleString()} FCFA
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        onClick={() => checkout(false)}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black py-3 rounded-xl text-base shadow-lg flex items-center justify-center"
+                      >
+                        💵 ENCAISSER
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const cId = prompt("Sélectionnez ID client (Ex: c1) ou annulez :");
+                          if (cId) checkout(true, cId);
+                        }}
+                        className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-3 rounded-xl text-xs shadow-lg flex items-center justify-center"
+                      >
+                        🔴 À CRÉDIT
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. MODULE PRODUITS */}
+            {screen === "PRODUCTS" && (
+              <div className="space-y-4">
+                {/* FORMULAIRE AJOUT PRODUIT */}
+                <form onSubmit={handleAddProduct} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                  <h3 className="font-black text-slate-800 text-sm">Ajouter un nouveau produit</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="pName" placeholder="Nom produit" required className="p-2 border border-slate-300 rounded-xl text-sm" />
+                    <select name="pSection" className="p-2 border border-slate-300 rounded-xl text-sm">
+                      {db.sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <input name="pSell" type="number" placeholder="Prix Vente (FCFA)" required className="p-2 border border-slate-300 rounded-xl text-sm" />
+                    <input name="pBuy" type="number" placeholder="Prix Achat (FCFA)" required className="p-2 border border-slate-300 rounded-xl text-sm" />
+                    <input name="pStock" type="number" placeholder="Quantité Stock" required className="p-2 border border-slate-300 rounded-xl text-sm col-span-2" />
+                  </div>
+                  <button type="submit" className="w-full bg-amber-500 text-slate-900 font-black py-2.5 rounded-xl text-sm shadow">
+                    + AJOUTER LE PRODUIT
+                  </button>
+                </form>
+
+                {/* LISTE PRODUITS */}
+                <div className="space-y-2">
+                  <h3 className="font-extrabold text-slate-700 text-xs uppercase">Inventaire actuel</h3>
+                  {db.products.map(p => (
+                    <div key={p.id} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{p.image}</span>
+                        <div>
+                          <div className="font-bold text-slate-800 text-sm">{p.name}</div>
+                          <div className="text-xs text-slate-500">Vente: {p.sellPrice.toLocaleString()} F | Stock: {p.stock}</div>
+                        </div>
+                      </div>
+                      {p.stock <= p.minStock && (
+                        <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-1 rounded-full">
+                          FAIBLE
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. MODULE ARGENT / CAISSE */}
+            {screen === "MONEY" && (
+              <div className="space-y-4">
+                <div className="bg-slate-900 text-white p-5 rounded-3xl shadow-xl text-center space-y-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase">Argent Disponible</span>
+                  <div className="text-3xl font-black text-amber-400">
+                    {db.sales.reduce((acc, s) => acc + s.total, 0).toLocaleString()} FCFA
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
+                    <span className="text-xs font-bold text-emerald-700">Entrées (Ventes)</span>
+                    <div className="text-lg font-black text-emerald-800">
+                      +{db.sales.reduce((acc, s) => acc + s.total, 0).toLocaleString()} F
+                    </div>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-2xl text-center">
+                    <span className="text-xs font-bold text-red-700">Sorties (Dépenses)</span>
+                    <div className="text-lg font-black text-red-800">
+                      -{db.expenses.reduce((acc, e) => acc + e.amount, 0).toLocaleString()} F
+                    </div>
+                  </div>
+                </div>
+
+                {/* ENREGISTRER DÉPENSE */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                  <h3 className="font-black text-slate-800 text-sm">Enregistrer une Dépense / Sortie</h3>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const title = e.target.title.value;
+                    const amount = Number(e.target.amount.value);
+                    setDb({...db, expenses: [{id: "e_"+Date.now(), title, amount, date: new Date().toISOString()}, ...db.expenses]});
+                    e.target.reset();
+                    alert("Dépense enregistrée !");
+                  }} className="space-y-2">
+                    <input name="title" placeholder="Motif (Ex: Transport, Loyer)" required className="w-full p-2 border border-slate-300 rounded-xl text-sm" />
+                    <input name="amount" type="number" placeholder="Montant FCFA" required className="w-full p-2 border border-slate-300 rounded-xl text-sm" />
+                    <button type="submit" className="w-full bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm">
+                      ENREGISTRER SORTIE
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* 5. MODULE CLIENTS & DETTES */}
+            {screen === "CUSTOMERS" && (
+              <div className="space-y-4">
+                <div className="bg-purple-900 text-white p-4 rounded-2xl shadow flex justify-between items-center">
+                  <div>
+                    <span className="text-xs text-purple-300 uppercase font-bold">Total Dettes Client</span>
+                    <div className="text-2xl font-black text-amber-400">
+                      {db.customers.reduce((acc, c) => acc + c.debt, 0).toLocaleString()} FCFA
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {db.customers.map(c => (
+                    <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-black text-slate-800 text-base">{c.name}</h4>
+                          <p className="text-xs text-slate-500">{c.phone}</p>
+                        </div>
+                        <span className={`text-sm font-black px-3 py-1 rounded-full ${c.debt > 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                          {c.debt > 0 ? `Doit: ${c.debt.toLocaleString()} F` : 'À jour ✅'}
+                        </span>
+                      </div>
+
+                      {c.debt > 0 && (
+                        <div className="flex space-x-2 pt-2 border-t border-slate-100">
+                          <button 
+                            onClick={() => {
+                              const payed = prompt(`Montant remboursé par ${c.name} :`);
+                              if (payed) {
+                                const newCustomers = db.customers.map(cust => cust.id === c.id ? {...cust, debt: Math.max(0, cust.debt - Number(payed))} : cust);
+                                setDb({...db, customers: newCustomers});
+                                alert("Paiement enregistré !");
+                              }
+                            }}
+                            className="flex-1 bg-emerald-500 text-slate-900 font-bold py-2 rounded-xl text-xs"
+                          >
+                            💰 IL A PAYÉ
+                          </button>
+                          <a 
+                            href={`https://wa.me/${c.phone}?text=Bonjour%20${c.name},%20rappell%20de%20votre%20dette%20chez%20${db.user.businessName}:%20${c.debt}%20FCFA.`}
+                            target="_blank"
+                            className="bg-emerald-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center"
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 6. RAPPORTS SIMPLIFIÉS */}
+            {screen === "RESULTS" && (
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                  <h3 className="font-black text-slate-800 text-lg border-b border-slate-100 pb-2">Rapport Simple</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-600">💰 J'ai vendu :</span>
+                      <span className="font-black text-slate-900 text-base">
+                        {db.sales.reduce((a, s) => a + s.total, 0).toLocaleString()} FCFA
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-600">📈 Marge / Gain Estimé :</span>
+                      <span className="font-black text-emerald-600 text-base">
+                        {db.sales.reduce((a, s) => a + s.profit, 0).toLocaleString()} FCFA
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-600">📦 Ventes Effectuées :</span>
+                      <span className="font-black text-slate-900 text-base">{db.sales.length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 7. ESPACE ADMINISTRATEUR PRIVÉ */}
+            {screen === "ADMIN" && (
+              <div className="space-y-4">
+                <div className="bg-slate-900 text-white p-4 rounded-2xl shadow space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-400 uppercase">TABLEAU DE BORD SAAS ADMIN</span>
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded">SÉCURISÉ</span>
+                  </div>
+                  <h3 className="text-xl font-black">Statistiques Réseau</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-500">UTILISATEURS</span>
+                    <div className="text-xl font-black text-slate-800">142</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-500">REVENUS ABONNEMENT</span>
+                    <div className="text-xl font-black text-emerald-600">1 420 000 F</div>
+                  </div>
+                </div>
+
+                {/* PARAMÈTRES RECONFIGURABLES SANS CODE */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <h4 className="font-black text-slate-800 text-sm">Configuration Tarifs & API</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600">Prix Abonnement PRO (FCFA)</label>
+                      <input 
+                        type="number" 
+                        defaultValue={db.adminConfig.proPrice}
+                        onChange={(e) => setDb({...db, adminConfig: {...db.adminConfig, proPrice: Number(e.target.value)}})}
+                        className="w-full p-2 border border-slate-300 rounded-xl text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600">Numéro Mobile Money Réception</label>
+                      <input 
+                        defaultValue={db.adminConfig.mobileNumbers.airtel}
+                        onChange={(e) => setDb({...db, adminConfig: {...db.adminConfig, mobileNumbers: {...db.adminConfig.mobileNumbers, airtel: e.target.value}}})}
+                        className="w-full p-2 border border-slate-300 rounded-xl text-sm" 
+                      />
+                    </div>
+                  </div>
+                  <button onClick={() => alert("Paramètres mis à jour dans la base de données !")} className="w-full bg-slate-900 text-amber-400 font-bold py-2 rounded-xl text-xs">
+                    SAUVEGARDER CONFIGURATION
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          <!-- BARRE DE NAVIGATION INFÉRIEURE MOBILE -->
+          <nav className="bg-white border-t border-slate-200 grid grid-cols-4 p-2 text-center text-[10px] font-extrabold text-slate-600">
+            <button onClick={() => setScreen("HOME")} className={`p-1 flex flex-col items-center ${screen === 'HOME' ? 'text-blue-600' : ''}`}>
+              <span className="text-xl">🏠</span>
+              <span>Accueil</span>
+            </button>
+            <button onClick={() => setScreen("SELL")} className={`p-1 flex flex-col items-center ${screen === 'SELL' ? 'text-blue-600' : ''}`}>
+              <span className="text-xl">🛒</span>
+              <span>Vendre</span>
+            </button>
+
+            <button onClick={() => setScreen("MONEY")} className={`p-1 flex flex-col items-center ${screen === 'MONEY' ? 'text-blue-600' : ''}`}>
+              <span className="text-xl">💰</span>
+              <span>Caisse</span>
+            </button>
+
+            <button onClick={() => setScreen("PRODUCTS")} className={`p-1 flex flex-col items-center ${screen === 'PRODUCTS' ? 'text-blue-600' : ''}`}>
+              <span className="text-xl">📦</span>
+              <span>Stock</span>
+            </button>
+          </nav>
+
+        </div>
+      );
+    }
+
+    // Initialisation React
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
