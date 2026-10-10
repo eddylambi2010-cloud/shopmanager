@@ -43,6 +43,7 @@ export async function getSecret(env, account) {
     try {
       const body = new URLSearchParams({
         operationAccountCode: account,
+        receptionUrlCode: env.PVIT_CALLBACK_CODE,
         password: env.PVIT_PASSWORD,
       });
       const r = await fetch(url, {
