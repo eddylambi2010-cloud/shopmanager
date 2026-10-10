@@ -3,6 +3,13 @@ export const BASE = "https://api.mypvit.pro";
 
 let cache = {}; // une clé par compte d'opération
 
+// Nettoie un code PVit : enlève espaces, "/", "v1", "v2" et les mots de fin de chemin
+export function code(value) {
+  const bad = ["", "v1", "v2", "renew-secret", "rest", "status"];
+  const parts = String(value || "").trim().split("/").map((x) => x.trim()).filter((x) => !bad.includes(x.toLowerCase()));
+  return parts[0] || "";
+}
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -35,7 +42,7 @@ export async function getSecret(env, account) {
   const hit = cache[account];
   if (hit && now < hit.exp) return hit.secret;
 
-  const c = env.PVIT_CODE_SECRET;
+  const c = code(env.PVIT_CODE_SECRET);
   const urls = [`${BASE}/v2/${c}/renew-secret`, `${BASE}/${c}/renew-secret`];
   let lastError = "";
 
@@ -43,7 +50,7 @@ export async function getSecret(env, account) {
     try {
       const body = new URLSearchParams({
         operationAccountCode: account,
-        receptionUrlCode: env.PVIT_CALLBACK_CODE,
+        receptionUrlCode: String(env.PVIT_CALLBACK_CODE || "").trim(),
         password: env.PVIT_PASSWORD,
       });
       const r = await fetch(url, {
