@@ -319,25 +319,76 @@ const payerAbonnement = async () => {
     setPaying(false);
   }
 };
+
 const blocPaiement = (
   <>
     <div className="cd">
-      <h3>Payer 5000 FCFA - PRO 30 jours</h3>
-      <p style={{fontSize:12}}>Paiement automatique sur MR_1791484047</p>
+      <h3>Payer 5000 FCFA</h3>
+
       <div className="two">
-        <button className={operator==="MOOV"?"p on":""} onClick={()=>setOperator("MOOV")}>Moov</button>
-        <button className={operator==="AIRTEL"?"p on":""} onClick={()=>setOperator("AIRTEL")}>Airtel</button>
+        <button
+          className={operator === "MOOV" ? "p on" : ""}
+          onClick={() => setOperator("MOOV")}
+        >
+          Moov
+        </button>
+
+        <button
+          className={operator === "AIRTEL" ? "p on" : ""}
+          onClick={() => setOperator("AIRTEL")}
+        >
+          Airtel
+        </button>
       </div>
-      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Numéro 074..." style={{width:'100%', padding:12, marginTop:8, borderRadius:8}}/>
-      <button onClick={payerAbonnement} disabled={loadingPay} style={{width:'100%', padding:14, background:'#16A34A', color:'white', border:0, borderRadius:10, marginTop:10, fontWeight:800}}>
-        {loadingPay ? "En cours..." : "PAYER 5000 FCFA"}
+
+      <input
+        type="tel"
+        placeholder="Votre numéro de téléphone"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+      />
+
+      <button
+        className="big g"
+        disabled={paying}
+        onClick={payerAbonnement}
+      >
+        {paying ? "Vérification en cours..." : "PAYER 5000 FCFA"}
       </button>
-      <div style={{fontSize:11, textAlign:'center', marginTop:6}}>Tu recevras une demande de confirmation sur ton tel</div>
+    </div>
+
+    <div className="cd">
+      <h3>Administration</h3>
+
+      <input
+        type="password"
+        placeholder="Code administrateur"
+        value={adminCode}
+        onChange={e => setAdminCode(e.target.value)}
+      />
+
+      <button
+        className="big"
+        onClick={() => {
+          if (adminCode !== "0505") {
+            return say("Code incorrect.");
+          }
+
+          up(c => {
+            c.adm = 1;
+          });
+
+          setAdminCode("");
+          home();
+          say("Accès administrateur activé.");
+        }}
+      >
+        DÉBLOQUER
+      </button>
     </div>
   </>
-)
-
-
+);
+  const share = () => { const d = { title: "SHOPMANAGER", text: "SHOPMANAGER — Votre commerce, simplement.", url: location.href }; if (location.protocol === "file:") delete d.url; navigator.share ? navigator.share(d).catch(() => {}) : (navigator.clipboard?.writeText(location.href), say("Lien copié ✅")); };
 
   // ---- Écrans ----
   const V = {
