@@ -9,7 +9,7 @@ const FINAL_BAD = ["FAILED", "CANCELLED", "CANCELED", "EXPIRED", "REJECTED", "DE
 export async function onRequestGet({ request, env }) {
 const reference = new URL(request.url).searchParams.get("reference") || "";
 if (!/^SHOP\d{10,}$/.test(reference)) return json({ error: "Référence invalide" }, 400);
-const secret = env.MYPVIT_SECRET;
+const secret = env.MYPVIT_SECRET || env.MYPVIT_SECRET_KEY;
 const base = env.MYPVIT_API_URL || env.VITE_MYPVIT_API_URL || "https://api.mypvit.pro";
 if (!secret) return json({ error: "Configuration serveur incomplète" }, 500);
 try {
