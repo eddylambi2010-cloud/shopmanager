@@ -1,4 +1,4 @@
-import { BASE, json, cleanPhone, getSecret, accountFor } from "../_pvit.js";
+import { BASE, json, cleanPhone, getSecret, accountFor, code } from "../_pvit.js";
 
 // POST /api/pay   corps : { phone: "074000000", operator: "AIRTEL_MONEY" | "MOOV_MONEY" (facultatif) }
 export async function onRequestPost({ request, env }) {
@@ -18,7 +18,7 @@ export async function onRequestPost({ request, env }) {
 
     const account = accountFor(env, operator);
     const secret = await getSecret(env, account);
-    const r = await fetch(`${BASE}/v2/${env.PVIT_CODE_REST}/rest`, {
+    const r = await fetch(`${BASE}/v2/${code(env.PVIT_CODE_REST)}/rest`, {
       method: "POST",
       headers: {
         "X-Secret": secret,
@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
         operator_code: operator,
         customer_account_number: phone,
         merchant_operation_account_code: account,
-        callback_url_code: env.PVIT_CALLBACK_CODE,
+        callback_url_code: String(env.PVIT_CALLBACK_CODE || "").trim(),
         owner_charge: "CUSTOMER",
         owner_charge_operator: "CUSTOMER",
         free_info: "Abonnement SHOPMANAGER",
