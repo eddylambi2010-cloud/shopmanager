@@ -1,0 +1,24 @@
+{
+  "name": "shopmanager",
+  "version": "1.0.0",
+  "description": "SHOPMANAGER — Votre commerce, simplement. Application de gestion commerciale pour petits commerçants (PWA, mobile-first).",
+  "private": true,
+  "main": "index.html",
+  "scripts": {
+    "start": "npx --yes serve . -l 3000",
+    "dev": "npx --yes serve . -l 3000",
+    "build": "echo \"Application statique : aucun build nécessaire\""
+  },
+  "keywords": [
+    "pwa",
+    "gestion-commerciale",
+    "mobile-money",
+    "gabon",
+    "caisse"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  }
+}
