@@ -1,67 +1,59 @@
-// functions/api/pay.js — Cloudflare Pages Function
-// Reçoit POST { amount, phone, operator } et lance le paiement MyPvit.
-const json = (body, status = 200) =>
-new Response(JSON.stringify(body), {
-status,
-headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-});
-const OPERATORS = { MOOV: "MOOV_MONEY", AIRTEL: "AIRTEL_MONEY" };
-// Numéro gabonais -> 9 chiffres (ex : 077044782)
-function cleanPhone(raw) {
-let d = String(raw || "").replace(/\D/g, "");
-if (d.startsWith("241") && d.length >= 11) d = d.slice(3);
-if (d.length === 8) d = "0" + d;
-return /^0\d{8}$/.test(d) ? d : null;
-}
+import { BASE, json, cleanPhone, getSecret, accountFor } from "../_pvit.js";
+
+// POST /api/pay   corps : { phone: "074000000", operator: "AIRTEL_MONEY" | "MOOV_MONEY" (facultatif) }
 export async function onRequestPost({ request, env }) {
-// Accepte seulement les appels venant de ton propre site
-const origin = request.headers.get("Origin");
-if (origin && origin !== new URL(request.url).origin) {
-return json({ error: "Origine refusée" }, 403);
-}
-let body;
-try {
-body = await request.json();
-} catch {
-return json({ error: "Requête invalide" }, 400);
-}
-// Montant fixé côté serveur : on ignore celui envoyé par le navigateur
-const amount = Number(env.SUBSCRIPTION_PRICE) || 5000;
-const phone = cleanPhone(body.phone);
-if (!phone) return json({ error: "Numéro invalide (9 chiffres)" }, 400);
-const operator_code = OPERATORS[String(body.operator || "").toUpperCase()];
-if (!operator_code) return json({ error: "Choisissez MOOV ou AIRTEL" }, 400);
-const secret = env.MYPVIT_SECRET || env.MYPVIT_SECRET_KEY;
-const merchant =
-env.MYPVIT_MERCHANT_CODE || env.VITE_MYPVIT_MERCI ||
-Object.entries(env).find(([k, v]) => /^(VITE_)?MYPVIT_MERCH/i.test(k) && typeof v === "string" && v)?.[1];
-const base = env.MYPVIT_API_URL || env.VITE_MYPVIT_API_URL || "https://api.mypvit.pro";
-if (!secret || !merchant) {
-// DIAGNOSTIC TEMPORAIRE : noms seulement, jamais les valeurs
-const manque = [!secret && "clé secrète", !merchant && "code marchand"].filter(Boolean).join(" + ");
-const vus = Object.keys(env).filter(k => /MYPVIT/i.test(k)).join(", ") || "aucune";
-return json({ error: "Configuration serveur incomplète [v3] — manque : " + manque + " — variables vues par le serveur : " + vus }, 500);
-}
-const reference = "SHOP" + Date.now();
-try {
-const res = await fetch(`${base}/v2/merchant-operation/rest`, {
-method: "POST",
-headers: { "Content-Type": "application/json", "X-Secret": secret },
-body: JSON.stringify({
-amount,
-reference,
-service: "RESTFUL",
-transaction_type: "PAYMENT",
-operator_code,
-customer_account_number: phone,
-merchant_operation_account_code: merchant,
-owner_charge: "CUSTOMER",
-}),
-});
-const data = await res.json().catch(() => ({}));
-if (!res.ok) return json({ error: "MyPvit a refusé la demande", details: data }, 502);
-return json({ ok: true, reference, mypvit: data });
-} catch (e) {
-return json({ error: "MyPvit injoignable" }, 502);
-}
+  try {
+    const b = await request.json().catch(() => ({}));
+    const phone = cleanPhone(b.phone);
+    if (phone.length < 8) return json({ ok: false, error: "Numéro invalide" }, 400);
+
+    let operator = String(b.operator || "").toUpperCase();
+    if (operator.includes("AIRTEL")) operator = "AIRTEL_MONEY";
+    else if (operator.includes("MOOV")) operator = "MOOV_MONEY";
+    else operator = phone.startsWith("07") ? "AIRTEL_MONEY" : "MOOV_MONEY";
+
+    // Le montant est fixé côté serveur (jamais envoyé par l'app)
+    const amount = Number(env.PVIT_AMOUNT || 5000);
+    const reference = "SM" + Date.now() + Math.floor(Math.random() * 1000);
+
+    const account = accountFor(env, operator);
+    const secret = await getSecret(env, account);
+    const r = await fetch(`${BASE}/v2/${env.PVIT_CODE_REST}/rest`, {
+      method: "POST",
+      headers: {
+        "X-Secret": secret,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        agent: "SHOPMANAGER",
+        amount,
+        reference,
+        service: "RESTFUL",
+        transaction_type: "PAYMENT",
+        operator_code: operator,
+        customer_account_number: phone,
+        merchant_operation_account_code: account,
+        callback_url_code: env.PVIT_CALLBACK_CODE,
+        owner_charge: "CUSTOMER",
+        owner_charge_operator: "CUSTOMER",
+        free_info: "Abonnement SHOPMANAGER",
+        product: "ABONNEMENT",
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+
+    if (r.ok && j.reference_id) {
+      return json({
+        ok: true,
+        transactionId: j.reference_id,
+        reference: j.merchant_reference_id || reference,
+        status: j.status || "PENDING",
+        message: "Validez le paiement sur votre téléphone.",
+      });
+    }
+    return json({ ok: false, error: j.message || "Paiement refusé par PVit" }, 400);
+  } catch (e) {
+    return json({ ok: false, error: String(e.message || e) }, 500);
+  }
 }
