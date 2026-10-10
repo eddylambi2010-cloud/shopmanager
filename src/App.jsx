@@ -420,7 +420,7 @@ return ["Abonnement", <>
 <div className="cd"><h2>⭐ PRO</h2><div className="num">{f(S.settings.price)}</div>pour {S.settings.days} jours</div>
 <div className="cd">{S.adm ? "✅ Administrateur : accès libre" : on ? "✅ Actif jusqu'au " + new Date(S.until).toLocaleDateString("fr-FR") : <>🔒 Paiement nécessaire pour utiliser l'application{left > 0 && <><br /><small>Essai : encore {left} vente(s)</small></>}</>}</div>
 <div className="cd">📱 Payer par Mobile Money{p.moov && <><br /><b>Moov Money : {p.moov}</b></>}{p.airtel && <><br /><b>Airtel Money : {p.airtel}</b></>}{p.intl1 && <><br /><b>International : {p.intl1}</b></>}{p.intl2 && <><br /><b>International : {p.intl2}</b></>}</div>
-{!S.adm && blocPaiement}
+{blocPaiement}
 <div className="cd">Votre code appareil<br /><b className="num" style={{ fontSize: 26 }}>{dcode}</b><small>Envoyez-le avec la preuve de paiement</small></div>
 <button className="big g" onClick={sendProof}>📲 J'AI PAYÉ — ENVOYER LA PREUVE</button>
 {p.payurl && <button className="big" onClick={payOnline}>💳 PAYER EN LIGNE</button>}
