@@ -1,4 +1,4 @@
-import { BASE, json, getSecret, allAccounts } from "../_pvit.js";
+import { BASE, json, getSecret, allAccounts, code } from "../_pvit.js";
 
 // GET /api/check?transactionId=PAY...   réponse : { ok, status: PENDING | SUCCESS | FAILED | AMBIGUOUS }
 export async function onRequestGet({ request, env }) {
@@ -10,7 +10,7 @@ export async function onRequestGet({ request, env }) {
     for (const account of allAccounts(env)) {
       const secret = await getSecret(env, account);
       const url =
-        `${BASE}/${env.PVIT_CODE_STATUS}/status` +
+        `${BASE}/${code(env.PVIT_CODE_STATUS)}/status` +
         `?transactionId=${encodeURIComponent(id)}` +
         `&accountOperationCode=${encodeURIComponent(account)}` +
         `&transactionOperation=PAYMENT`;
