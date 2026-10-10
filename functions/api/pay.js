@@ -31,8 +31,10 @@ const phone = cleanPhone(body.phone);
 if (!phone) return json({ error: "Numéro invalide (9 chiffres)" }, 400);
 const operator_code = OPERATORS[String(body.operator || "").toUpperCase()];
 if (!operator_code) return json({ error: "Choisissez MOOV ou AIRTEL" }, 400);
-const secret = env.MYPVIT_SECRET;
-const merchant = env.MYPVIT_MERCHANT_CODE || env.VITE_MYPVIT_MERCI;
+const secret = env.MYPVIT_SECRET || env.MYPVIT_SECRET_KEY;
+const merchant =
+env.MYPVIT_MERCHANT_CODE || env.VITE_MYPVIT_MERCI ||
+Object.entries(env).find(([k, v]) => /^(VITE_)?MYPVIT_MERCH/i.test(k) && typeof v === "string" && v)?.[1];
 const base = env.MYPVIT_API_URL || env.VITE_MYPVIT_API_URL || "https://api.mypvit.pro";
 if (!secret || !merchant) return json({ error: "Configuration serveur incomplète" }, 500);
 const reference = "SHOP" + Date.now();
