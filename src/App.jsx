@@ -255,6 +255,139 @@ export default function App() {
   };
   const sendProof = () => wa(S.pay.wa || S.pay.airtel, "Bonjour, j'ai payé mon abonnement SHOPMANAGER. Code appareil : " + dcode + " — Commerce : " + S.biz.name + (S.biz.tel ? " — " + S.biz.tel : ""));
   const payOnline = () => { const u = S.pay.payurl; window.open(/^https?:/.test(u) ? u : "https://" + u, "_blank"); };
+  const [phone, setPhone] = useState("");
+const [operator, setOperator] = useState("MOOV");
+const [paying, setPaying] = useState(false);
+const [adminCode, setAdminCode] = useState("");
+
+const payerAbonnement = async () => {
+  if (!phone.trim()) return say("Entrez votre numéro de téléphone.");
+  if (paying) return;
+
+  setPaying(true);
+
+  try {
+    const response = await fetch("/api/pay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: 5000,
+        phone: phone.trim(),
+        operator,
+        merchantReference: "MR_1791484047",
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.reference) {
+      throw new Error(data.message || "Impossible d'initier le paiement.");
+    }
+
+    say("Paiement initié. Confirmez sur votre téléphone.");
+
+    for (let i = 0; i < 36; i++) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      const check = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: data.reference }),
+      });
+
+      const result = await check.json();
+
+      if (result.status === "SUCCESS") {
+        up(c => {
+          c.until = Date.now() + 30 * DAY;
+        });
+
+        setPaying(false);
+        home();
+        return say("Paiement confirmé ! Accès activé pendant 30 jours.");
+      }
+
+      if (["FAILED", "CANCELLED", "REJECTED"].includes(result.status)) {
+        throw new Error("Paiement refusé ou annulé.");
+      }
+    }
+
+    say("Confirmation en attente. Vérifiez votre paiement.");
+  } catch (error) {
+    say(error.message || "Erreur de paiement.");
+  } finally {
+    setPaying(false);
+  }
+};
+
+const blocPaiement = (
+  <>
+    <div className="cd">
+      <h3>Payer 5000 FCFA</h3>
+
+      <div className="two">
+        <button
+          className={operator === "MOOV" ? "p on" : ""}
+          onClick={() => setOperator("MOOV")}
+        >
+          Moov
+        </button>
+
+        <button
+          className={operator === "AIRTEL" ? "p on" : ""}
+          onClick={() => setOperator("AIRTEL")}
+        >
+          Airtel
+        </button>
+      </div>
+
+      <input
+        type="tel"
+        placeholder="Votre numéro de téléphone"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+      />
+
+      <button
+        className="big g"
+        disabled={paying}
+        onClick={payerAbonnement}
+      >
+        {paying ? "Vérification en cours..." : "PAYER 5000 FCFA"}
+      </button>
+    </div>
+
+    <div className="cd">
+      <h3>Administration</h3>
+
+      <input
+        type="password"
+        placeholder="Code administrateur"
+        value={adminCode}
+        onChange={e => setAdminCode(e.target.value)}
+      />
+
+      <button
+        className="big"
+        onClick={() => {
+          if (adminCode !== "0505") {
+            return say("Code incorrect.");
+          }
+
+          up(c => {
+            c.adm = 1;
+          });
+
+          setAdminCode("");
+          home();
+          say("Accès administrateur activé.");
+        }}
+      >
+        DÉBLOQUER
+      </button>
+    </div>
+  </>
+);
   const share = () => { const d = { title: "SHOPMANAGER", text: "SHOPMANAGER — Votre commerce, simplement.", url: location.href }; if (location.protocol === "file:") delete d.url; navigator.share ? navigator.share(d).catch(() => {}) : (navigator.clipboard?.writeText(location.href), say("Lien copié ✅")); };
 
   // ---- Écrans ----
