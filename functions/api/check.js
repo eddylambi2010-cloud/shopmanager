@@ -1,35 +1,29 @@
-// functions/api/check.js — Cloudflare Pages Function
-// Reçoit GET ?reference=SHOP... et renvoie le statut du paiement MyPvit.
-const json = (body, status = 200) =>
-new Response(JSON.stringify(body), {
-status,
-headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-});
-const FINAL_BAD = ["FAILED", "CANCELLED", "CANCELED", "EXPIRED", "REJECTED", "DECLINED"];
+import { BASE, json, getSecret, allAccounts } from "../_pvit.js";
+
+// GET /api/check?transactionId=PAY...   réponse : { ok, status: PENDING | SUCCESS | FAILED | AMBIGUOUS }
 export async function onRequestGet({ request, env }) {
-const reference = new URL(request.url).searchParams.get("reference") || "";
-if (!/^SHOP\d{10,}$/.test(reference)) return json({ error: "Référence invalide" }, 400);
-const secret = env.MYPVIT_SECRET || env.MYPVIT_SECRET_KEY;
-const base = env.MYPVIT_API_URL || env.VITE_MYPVIT_API_URL || "https://api.mypvit.pro";
-if (!secret) return json({ error: "Configuration serveur incomplète" }, 500);
-try {
-const res = await fetch(`${base}/v2/merchant-operation/${reference}`, {
-method: "GET",
-headers: { "X-Secret": secret },
-});
-const data = await res.json().catch(() => ({}));
-if (!res.ok) return json({ reference, status: "UNKNOWN", success: false, final: false, raw: data });
-const status = String(
-data.status ?? data.data?.status ?? data.transaction?.status ?? data.operation?.status ?? ""
-).toUpperCase();
-return json({
-reference,
-status,
-success: status === "SUCCESS",
-final: status === "SUCCESS" || FINAL_BAD.includes(status),
-raw: data,
-});
-} catch {
-return json({ reference, status: "UNKNOWN", success: false, final: false });
-}
+  try {
+    const id = new URL(request.url).searchParams.get("transactionId");
+    if (!id) return json({ ok: false, error: "transactionId manquant" }, 400);
+
+    let last = "PENDING";
+    for (const account of allAccounts(env)) {
+      const secret = await getSecret(env, account);
+      const url =
+        `${BASE}/${env.PVIT_CODE_STATUS}/status` +
+        `?transactionId=${encodeURIComponent(id)}` +
+        `&accountOperationCode=${encodeURIComponent(account)}` +
+        `&transactionOperation=PAYMENT`;
+      const r = await fetch(url, {
+        headers: { "X-Secret": secret, Accept: "application/json" },
+      });
+      const j = await r.json().catch(() => ({}));
+      const status = j.status || (j.data && j.data.status);
+      if (r.ok && status) return json({ ok: true, status });
+      if (status) last = status;
+    }
+    return json({ ok: true, status: last });
+  } catch (e) {
+    return json({ ok: false, error: String(e.message || e) }, 500);
+  }
 }
