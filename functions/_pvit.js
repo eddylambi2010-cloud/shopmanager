@@ -64,7 +64,7 @@ export async function getSecret(env, account) {
         cache[account] = { secret: j.secret, exp: now + ttl * 1000 };
         return j.secret;
       }
-      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: ${j.message || j.error || "HTTP " + r.status}] `;
+      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: HTTP ${r.status} ${JSON.stringify(j).slice(0, 400)}] `;
     } catch (e) {
       lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: ${String(e)}] `;
     }
