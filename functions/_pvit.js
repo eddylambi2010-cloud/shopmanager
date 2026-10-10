@@ -57,9 +57,9 @@ export async function getSecret(env, account) {
         cache[account] = { secret: j.secret, exp: now + ttl * 1000 };
         return j.secret;
       }
-      lastError = j.message || `HTTP ${r.status}`;
+      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: ${j.message || j.error || "HTTP " + r.status}] `;
     } catch (e) {
-      lastError = String(e);
+      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: ${String(e)}] `;
     }
   }
   throw new Error("Clé PVit impossible à obtenir : " + lastError);
