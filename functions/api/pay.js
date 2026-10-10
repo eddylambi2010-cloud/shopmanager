@@ -36,7 +36,12 @@ const merchant =
 env.MYPVIT_MERCHANT_CODE || env.VITE_MYPVIT_MERCI ||
 Object.entries(env).find(([k, v]) => /^(VITE_)?MYPVIT_MERCH/i.test(k) && typeof v === "string" && v)?.[1];
 const base = env.MYPVIT_API_URL || env.VITE_MYPVIT_API_URL || "https://api.mypvit.pro";
-if (!secret || !merchant) return json({ error: "Configuration serveur incomplète" }, 500);
+if (!secret || !merchant) {
+// DIAGNOSTIC TEMPORAIRE : noms seulement, jamais les valeurs
+const manque = [!secret && "clé secrète", !merchant && "code marchand"].filter(Boolean).join(" + ");
+const vus = Object.keys(env).filter(k => /MYPVIT/i.test(k)).join(", ") || "aucune";
+return json({ error: "Configuration serveur incomplète [v3] — manque : " + manque + " — variables vues par le serveur : " + vus }, 500);
+}
 const reference = "SHOP" + Date.now();
 try {
 const res = await fetch(`${base}/v2/merchant-operation/rest`, {
