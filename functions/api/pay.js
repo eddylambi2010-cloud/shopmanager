@@ -54,7 +54,8 @@ export async function onRequestPost({ request, env }) {
         message: "Validez le paiement sur votre téléphone.",
       });
     }
-    return json({ ok: false, error: j.message || "Paiement refusé par PVit" }, 400);
+    return json({ ok: false, error: j.message ||     const detail = j.message || (Array.isArray(j.messages) ? j.messages.join(" ") : "") || j.error || JSON.stringify(j).slice(0, 400);
+    return json({ ok: false, error: "PVit HTTP " + r.status + " : " + detail }, 400); }, 400);
   } catch (e) {
     return json({ ok: false, error: String(e.message || e) }, 500);
   }
