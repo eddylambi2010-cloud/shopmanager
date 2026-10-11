@@ -38,7 +38,7 @@ export async function onRequestPost({ request, env }) {
         callback_url_code: clean(env.PVIT_CALLBACK_CODE),
         owner_charge: "CUSTOMER",
         owner_charge_operator: "CUSTOMER",
-        free_info: "Abonnement SHOPMANAGER",
+        free_info: "Abonnement",
         product: "ABONNEMENT",
       }),
     }, ip);
