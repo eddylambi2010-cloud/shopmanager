@@ -1,4 +1,4 @@
-import { BASE, json, getSecret, allAccounts, code, fwdIp, ipHeader } from "../_pvit.js";
+import { json, getSecret, allAccounts, code, fwdIp, pvitFetch } from "../_pvit.js";
 
 // GET /api/check?reference=PAY...   réponse : { ok, status, success, final }
 const out = (status) =>
@@ -15,13 +15,14 @@ export async function onRequestGet({ request, env }) {
       const ip = fwdIp(env, request);
       const secret = await getSecret(env, account, ip);
       const url =
-        `${BASE}/${code(env.PVIT_CODE_STATUS)}/status` +
+        `/${code(env.PVIT_CODE_STATUS)}/status` +
         `?transactionId=${encodeURIComponent(id)}` +
         `&accountOperationCode=${encodeURIComponent(account)}` +
         `&transactionOperation=PAYMENT`;
-      const r = await fetch(url, {
-        headers: { "X-Secret": secret, Accept: "application/json", ...ipHeader(ip) },
-      });
+      const r = await pvitFetch(env, url, {
+        method: "GET",
+        headers: { "X-Secret": secret, Accept: "application/json" },
+      }, ip);
       const j = await r.json().catch(() => ({}));
       const status = j.status || (j.data && j.data.status);
       if (r.ok && status) return out(status);
