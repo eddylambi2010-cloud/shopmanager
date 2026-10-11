@@ -10,6 +10,19 @@ export function code(value) {
   return parts[0] || "";
 }
 
+// Une seule adresse IPv4 à transmettre à PVit dans X-Forwarded-For
+const V4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+export function fwdIp(env, request) {
+  const fixed = String(env.PVIT_FORWARD_IP || "").trim();
+  if (V4.test(fixed)) return fixed;
+  const cf = request ? String(request.headers.get("CF-Connecting-IP") || "").trim() : "";
+  return V4.test(cf) ? cf : "";
+}
+
+export function ipHeader(ip) {
+  return ip ? { "X-Forwarded-For": ip } : {};
+}
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -36,7 +49,7 @@ export function allAccounts(env) {
   return [...new Set([env.PVIT_ACCOUNT_CODE, env.PVIT_ACCOUNT_CODE_AIRTEL, env.PVIT_ACCOUNT_CODE_MOOV].filter(Boolean))];
 }
 
-export async function getSecret(env, account) {
+export async function getSecret(env, account, ip) {
   account = account || env.PVIT_ACCOUNT_CODE;
   const now = Date.now();
   const hit = cache[account];
@@ -55,7 +68,7 @@ export async function getSecret(env, account) {
       });
       const r = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", ...ipHeader(ip) },
         body,
       });
       const j = await r.json().catch(() => ({}));
