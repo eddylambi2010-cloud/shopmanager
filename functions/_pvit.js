@@ -23,6 +23,30 @@ export function ipHeader(ip) {
   return ip ? { "X-Forwarded-For": ip } : {};
 }
 
+// Appel PVit : via le relais (RELAY_URL) s'il est configuré, sinon en direct
+export async function pvitFetch(env, path, init = {}, ip) {
+  const relay = String(env.RELAY_URL || "").trim();
+  if (relay) {
+    return fetch(relay, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + String(env.RELAY_TOKEN || "").trim(),
+      },
+      body: JSON.stringify({
+        path,
+        method: init.method || "GET",
+        headers: init.headers || {},
+        body: init.body ? String(init.body) : undefined,
+      }),
+    });
+  }
+  return fetch(BASE + path, {
+    ...init,
+    headers: { ...(init.headers || {}), ...ipHeader(ip) },
+  });
+}
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -56,7 +80,7 @@ export async function getSecret(env, account, ip) {
   if (hit && now < hit.exp) return hit.secret;
 
   const c = code(env.PVIT_CODE_SECRET);
-  const urls = [`${BASE}/v2/${c}/renew-secret`, `${BASE}/${c}/renew-secret`];
+  const urls = [`/v2/${c}/renew-secret`, `/${c}/renew-secret`];
   let lastError = "";
 
   for (const url of urls) {
@@ -66,20 +90,20 @@ export async function getSecret(env, account, ip) {
         receptionUrlCode: String(env.PVIT_CALLBACK_CODE || "").trim(),
         password: env.PVIT_PASSWORD,
       });
-      const r = await fetch(url, {
+      const r = await pvitFetch(env, url, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", ...ipHeader(ip) },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
-      });
+      }, ip);
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.secret) {
         const ttl = Math.max((Number(j.expires_in) || 3600) - 300, 60);
         cache[account] = { secret: j.secret, exp: now + ttl * 1000 };
         return j.secret;
       }
-      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: HTTP ${r.status} ${JSON.stringify(j).slice(0, 400)}] `;
+      lastError += `[${url.startsWith("/v2/") ? "v2" : "v1"}: HTTP ${r.status} ${JSON.stringify(j).slice(0, 400)}] `;
     } catch (e) {
-      lastError += `[${url.includes("/v2/") ? "v2" : "v1"}: ${String(e)}] `;
+      lastError += `[${url.startsWith("/v2/") ? "v2" : "v1"}: ${String(e)}] `;
     }
   }
   throw new Error("Clé PVit impossible à obtenir : " + lastError);
