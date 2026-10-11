@@ -1,4 +1,4 @@
-import { BASE, json, cleanPhone, getSecret, accountFor, code, fwdIp, ipHeader } from "../_pvit.js";
+import { json, cleanPhone, getSecret, accountFor, code, fwdIp, pvitFetch } from "../_pvit.js";
 
 // POST /api/pay   corps : { phone: "074000000", operator: "AIRTEL_MONEY" | "MOOV_MONEY" (facultatif) }
 export async function onRequestPost({ request, env }) {
@@ -19,11 +19,10 @@ export async function onRequestPost({ request, env }) {
     const account = accountFor(env, operator);
     const ip = fwdIp(env, request);
     const secret = await getSecret(env, account, ip);
-    const r = await fetch(`${BASE}/v2/${code(env.PVIT_CODE_REST)}/rest`, {
+    const r = await pvitFetch(env, `/v2/${code(env.PVIT_CODE_REST)}/rest`, {
       method: "POST",
       headers: {
         "X-Secret": secret,
-        ...ipHeader(ip),
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -42,7 +41,7 @@ export async function onRequestPost({ request, env }) {
         free_info: "Abonnement SHOPMANAGER",
         product: "ABONNEMENT",
       }),
-    });
+    }, ip);
     const j = await r.json().catch(() => ({}));
 
     if (r.ok && j.reference_id) {
