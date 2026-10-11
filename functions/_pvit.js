@@ -1,110 +1,61 @@
-// Outils PVit partagés (ne pas modifier)
-export const BASE = "https://api.mypvit.pro";
+import { json, cleanPhone, getSecret, accountFor, code, clean, fwdIp, pvitFetch } from "../_pvit.js";
 
-let cache = {}; // une clé par compte d'opération
+// POST /api/pay   corps : { phone: "074000000", operator: "AIRTEL_MONEY" | "MOOV_MONEY" (facultatif) }
+export async function onRequestPost({ request, env }) {
+  try {
+    const b = await request.json().catch(() => ({}));
+    const phone = cleanPhone(b.phone);
+    if (phone.length < 8) return json({ ok: false, error: "Numéro invalide" }, 400);
 
-// Nettoie un code PVit : enlève espaces, "/", "v1", "v2" et les mots de fin de chemin
-export function code(value) {
-  const bad = ["", "v1", "v2", "renew-secret", "rest", "status"];
-  const parts = String(value || "").trim().split("/").map((x) => x.trim()).filter((x) => !bad.includes(x.toLowerCase()));
-  return parts[0] || "";
-}
+    let operator = String(b.operator || "").toUpperCase();
+    if (operator.includes("AIRTEL")) operator = "AIRTEL_MONEY";
+    else if (operator.includes("MOOV")) operator = "MOOV_MONEY";
+    else operator = phone.startsWith("07") ? "AIRTEL_MONEY" : "MOOV_MONEY";
 
-// Une seule adresse IPv4 à transmettre à PVit dans X-Forwarded-For
-const V4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
-export function fwdIp(env, request) {
-  const fixed = String(env.PVIT_FORWARD_IP || "").trim();
-  if (V4.test(fixed)) return fixed;
-  const cf = request ? String(request.headers.get("CF-Connecting-IP") || "").trim() : "";
-  return V4.test(cf) ? cf : "";
-}
+    // Le montant est fixé côté serveur (jamais envoyé par l'app)
+    const amount = Number(env.PVIT_AMOUNT || 5000);
+    const reference = "SM" + Date.now() + Math.floor(Math.random() * 1000);
 
-export function ipHeader(ip) {
-  return ip ? { "X-Forwarded-For": ip } : {};
-}
-
-// Appel PVit : via le relais (RELAY_URL) s'il est configuré, sinon en direct
-export async function pvitFetch(env, path, init = {}, ip) {
-  const relay = String(env.RELAY_URL || "").trim();
-  if (relay) {
-    return fetch(relay, {
+    const account = accountFor(env, operator);
+    const ip = fwdIp(env, request);
+    const secret = await getSecret(env, account, ip);
+    const r = await pvitFetch(env, `/v2/${code(env.PVIT_CODE_REST)}/rest`, {
       method: "POST",
       headers: {
+        "X-Secret": secret,
         "Content-Type": "application/json",
-        Authorization: "Bearer " + String(env.RELAY_TOKEN || "").trim(),
+        Accept: "application/json",
       },
       body: JSON.stringify({
-        path,
-        method: init.method || "GET",
-        headers: init.headers || {},
-        body: init.body ? String(init.body) : undefined,
+        agent: "SHOPMANAGER",
+        amount,
+        reference,
+        service: "RESTFUL",
+        transaction_type: "PAYMENT",
+        operator_code: operator,
+        customer_account_number: phone,
+        merchant_operation_account_code: account,
+        callback_url_code: clean(env.PVIT_CALLBACK_CODE),
+        owner_charge: "CUSTOMER",
+        owner_charge_operator: "CUSTOMER",
+        free_info: "Abonnement SHOPMANAGER",
+        product: "ABONNEMENT",
       }),
-    });
-  }
-  return fetch(BASE + path, {
-    ...init,
-    headers: { ...(init.headers || {}), ...ipHeader(ip) },
-  });
-}
+    }, ip);
+    const j = await r.json().catch(() => ({}));
 
-export function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-export function cleanPhone(p) {
-  let n = String(p || "").replace(/\D/g, "");
-  if (n.startsWith("241")) n = n.slice(3);
-  if (n.length === 8) n = "0" + n;
-  return n;
-}
-
-// Récupère (et renouvelle automatiquement) la clé secrète PVit
-export function accountFor(env, operator) {
-  const specific =
-    operator === "AIRTEL_MONEY" ? env.PVIT_ACCOUNT_CODE_AIRTEL :
-    operator === "MOOV_MONEY" ? env.PVIT_ACCOUNT_CODE_MOOV : "";
-  return specific || env.PVIT_ACCOUNT_CODE;
-}
-
-export function allAccounts(env) {
-  return [...new Set([env.PVIT_ACCOUNT_CODE, env.PVIT_ACCOUNT_CODE_AIRTEL, env.PVIT_ACCOUNT_CODE_MOOV].filter(Boolean))];
-}
-
-export async function getSecret(env, account, ip) {
-  account = account || env.PVIT_ACCOUNT_CODE;
-  const now = Date.now();
-  const hit = cache[account];
-  if (hit && now < hit.exp) return hit.secret;
-
-  const c = code(env.PVIT_CODE_SECRET);
-  const urls = [`/v2/${c}/renew-secret`, `/${c}/renew-secret`];
-  let lastError = "";
-
-  for (const url of urls) {
-    try {
-      const body = new URLSearchParams({
-        operationAccountCode: account,
-        receptionUrlCode: String(env.PVIT_CALLBACK_CODE || "").trim(),
-        password: env.PVIT_PASSWORD,
+    if (r.ok && j.reference_id) {
+      return json({
+        ok: true,
+        reference: j.reference_id,
+        transactionId: j.reference_id,
+        merchantReference: j.merchant_reference_id || reference,
+        status: j.status || "PENDING",
+        message: "Validez le paiement sur votre téléphone.",
       });
-      const r = await pvitFetch(env, url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      }, ip);
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && j.secret) {
-        const ttl = Math.max((Number(j.expires_in) || 3600) - 300, 60);
-        cache[account] = { secret: j.secret, exp: now + ttl * 1000 };
-        return j.secret;
-      }
-      lastError += `[${url.startsWith("/v2/") ? "v2" : "v1"}: HTTP ${r.status} ${JSON.stringify(j).slice(0, 400)}] `;
-    } catch (e) {
-      lastError += `[${url.startsWith("/v2/") ? "v2" : "v1"}: ${String(e)}] `;
     }
+    return json({ ok: false, error: j.message || "Paiement refusé par PVit" }, 400);
+  } catch (e) {
+    return json({ ok: false, error: String(e.message || e) }, 500);
   }
-  throw new Error("Clé PVit impossible à obtenir : " + lastError);
 }
