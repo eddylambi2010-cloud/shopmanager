@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
     if (r.ok && j.reference_id) {
       return json({
         ok: true,
-        reference: j.reference_id,
+        reference: reference,
         transactionId: j.reference_id,
         merchantReference: j.merchant_reference_id || reference,
         status: j.status || "PENDING",
