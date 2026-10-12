@@ -71,7 +71,7 @@ prods: [
 ],
 custs: [{ id: 1, name: "Jean (démo)", tel: "", debt: 0 }],
 sales: [], cash: [], until: 0, seen: 0, mute: {}, adm: 0, h: "", sk: "", dev: rid(), n: 0, msg: "",
-pay: { moov: "065575201", airtel: "077044782", intl1: "", intl2: "", payurl: "", apiurl: "", apikey: "", wa: "" },
+pay: { moov: "065575201", airtel: "077065861", intl1: "", intl2: "", payurl: "", apiurl: "", apikey: "", wa: "" },
 };
 const TUT = ["🛒 Pour vendre, appuyez ici.", "📦 Pour voir vos produits, appuyez ici.", "💰 Pour voir votre argent, appuyez ici."];
 function FormModal({ fm, close }) {
