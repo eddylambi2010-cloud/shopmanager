@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
         transactionId: j.reference_id,
         merchantReference: j.merchant_reference_id || reference,
         status: j.status || "PENDING",
-        message: (operator && operator.includes(moov))? "Moov va debiter Validez le paiement sur votre téléphone.",
+        message: validez le paiement sur votre telephone))? "Moov va debiter Validez le paiement sur votre téléphone.",
       });
     }
     const detail = j.message || (Array.isArray(j.messages) ? j.messages.join(" ") : "") || j.error || JSON.stringify(j).slice(0, 400);
