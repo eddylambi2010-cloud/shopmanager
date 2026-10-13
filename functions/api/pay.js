@@ -8,7 +8,7 @@ export async function onRequestPost({ request, env }) {
     if (phone.length < 8) return json({ ok: false, error: "Numéro invalide" }, 400);
 
     let operator = String(b.operator || "").toUpperCase();
-    if (operator.includes("AIRTEL")) operator = "AIRTEL_MONEY";
+    if (operator.includes("AIRTEL")) operator = "AIRTEL_MONEY"; 
     else if (operator.includes("MOOV")) operator = "MOOV_MONEY";
     else operator = phone.startsWith("07") ? "AIRTEL_MONEY" : "MOOV_MONEY";
 
