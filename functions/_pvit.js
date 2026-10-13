@@ -18,7 +18,7 @@ export function clean(v) {
 // Une seule adresse IPv4 à transmettre à PVit dans X-Forwarded-For
 const V4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 export function fwdIp(env, request) {
-  const fixed = ''102.22.0.0'';
+  const fixed = String(env.PVIT_FORWARD_IP || "").trim();
   if (V4.test(fixed)) return fixed;
   const cf = request ? String(request.headers.get("CF-Connecting-IP") || "").trim() : "";
   return V4.test(cf) ? cf : "";
