@@ -1,4 +1,4 @@
-// Outils PVit partagés (ne pas modifier)
+// Outils PVit partagés (ne pas modifier) 
 export const BASE = "https://api.mypvit.pro";
 
 let cache = {}; // une clé par compte d'opération
