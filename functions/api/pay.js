@@ -5,7 +5,7 @@ export async function onRequestPost({ request, env }) {
   try {
     const b = await request.json().catch(() => ({}));
     const phone = cleanPhone(b.phone);
-    if (phone.length < 8) return json({ ok: false, error: "Numéro invalide" }, 400);
+    if (phone.length < 8) return json({ ok: false, error: "Numéro invalide" }, 400); 
 
     let operator = String(b.operator || "").toUpperCase();
     if (operator.includes("AIRTEL")) operator = "AIRTEL_MONEY"; 
