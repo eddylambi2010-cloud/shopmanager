@@ -422,10 +422,9 @@ return ["Abonnement", <>
 <div className="cd">📱 Payer par Mobile Money{p.moov && <><br /><b>Moov Money : {p.moov}</b></>}{p.airtel && <><br /><b>Airtel Money : {p.airtel}</b></>}{p.intl1 && <><br /><b>International : {p.intl1}</b></>}{p.intl2 && <><br /><b>International : {p.intl2}</b></>}</div>
 {blocPaiement}
 <div className="cd">Votre code appareil<br /><b className="num" style={{ fontSize: 26 }}>{dcode}</b><small>Envoyez-le avec la preuve de paiement</small></div>
-<button className="big g" onClick={sendProof}>📲 J'AI PAYÉ — ENVOYER LA PREUVE</button>
+<button className="big g" onClick={sendProof}>
 {p.payurl && <button className="big" onClick={payOnline}>💳 PAYER EN LIGNE</button>}
-<button className="big y" onClick={() => form("Code activation", [{ k: "c", l: "Code reçu" }], r => activate(r.c))}>🔑 J'AI MON CODE D'ACTIVATION</button></>];
-},
+<button className="big y" onClick={() => form("Code activation", [{ k: "c", l: "Code reçu" }], r => activate(r.c))}>
 admin: () => {
 const on = S.until > Date.now();
 return ["🛡️ Administration", <>
