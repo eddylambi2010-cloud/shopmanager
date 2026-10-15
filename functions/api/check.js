@@ -1,5 +1,5 @@
 // SHOPMANAGER — Votre commerce, simplement. (version React / JSX)
-// Utilisation : export par défaut <App /> ; aucune autre dépendance que React.
+// Utilisation : export par défaut <App /> ; aucune autre dépendance que React. 
 // Partage propriétaire / vendeurs : optionnel (bouton « Partage » sur l'accueil). Sans partage, l'application fonctionne comme avant.
 import { useState, useEffect, useRef } from "react";
 const CSS = `:root{--b:#0B2A5B;--a:#1E6BFF;--y:#FFC21A;--g:#16A34A;--r:#DC2626;--bg:#F1F3F6;--c:#fff;--t:#111;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
