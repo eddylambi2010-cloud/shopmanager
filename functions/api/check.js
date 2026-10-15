@@ -1,4 +1,4 @@
-// SHOPMANAGER — Votre commerce, simplement. (version React / JSX)
+// SHOPMANAGER — Votre commerce, simplement. (version React / JSX) 
 // Utilisation : export par défaut <App /> ; aucune autre dépendance que React.
 // Partage propriétaire / vendeurs : optionnel (bouton « Partage » sur l'accueil). Sans partage, l'application fonctionne comme avant.
 import { useState, useEffect, useRef } from "react";
