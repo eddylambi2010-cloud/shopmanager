@@ -145,13 +145,13 @@ export default function App() {
   const cref = useRef(undefined);
   if (cref.current === undefined) cref.current = loadC();
   const [cl, setCl] = useState(() => { const c = cref.current; return c ? { role: c.role, name: c.name, shop: c.shop, uid: c.uid } : null; });
-  const [net, setNet] = useState(true), [wait, setWait] = useState(false), [members, setMembers] = useState([]);
+  const [net, setNet] = useState(true), [wait, setWait] = useState(false), [members, setMembers] = useState([]), [invs, setInvs] = useState([]);
   const lock = useRef(0), polling = useRef(""), clr = useRef(null);
   clr.current = cl;
   const own = !cl || cl.role === "owner";
 
   const leave = text => {
-    const was = cref.current; cref.current = null; saveC(null); setCl(null); setMembers([]);
+    const was = cref.current; cref.current = null; saveC(null); setCl(null); setMembers([]); setInvs([]);
     if (was && was.role === "manager") setS({ ...DEF, dev: rid() });
     if (text) say(text);
   };
@@ -483,20 +483,36 @@ export default function App() {
       home(); say("Vous êtes connecté ✅");
     } catch (e) { say(e.message); } finally { setWait(false); }
   });
-  const inviteVendor = async () => {
-    try {
-      const code = await rpc("create_invite", { p_shop: cref.current.shop });
-      const txt = `Bonjour, rejoignez ${S.biz.name} sur SHOPMANAGER : ouvrez ${location.origin}, touchez « Partage », puis « Rejoindre un commerce ». Code : ${code} (valable 24 h)`;
-      say(<>Code vendeur (valable 24 h, une seule utilisation) :<pre>{code}</pre><button className="big g" onClick={() => wa("", txt)}>📲 Envoyer par WhatsApp</button></>);
-    } catch (e) { say(e.message); }
-  };
+  const sendInvite = (code, name) => wa("", `Bonjour${name ? " " + name : ""}, rejoignez ${S.biz.name} sur SHOPMANAGER : ouvrez ${location.origin}, touchez « Partage », puis « Rejoindre un commerce ». Votre code : ${code}`);
   const loadMembers = async () => {
-    try { setMembers((await sb("/rest/v1/members?shop_id=eq." + cref.current.shop + "&select=user_id,role,name,active&order=created_at", { tok: await tokOk() })) || []); } catch {}
+    try {
+      const tok = await tokOk(), shop = cref.current.shop;
+      setMembers((await sb("/rest/v1/members?shop_id=eq." + shop + "&role=eq.manager&select=user_id,name,phone,active&order=created_at", { tok })) || []);
+      setInvs((await rpc("list_invites", { p_shop: shop })) || []);
+    } catch {}
   };
-  const removeVendor = async m => {
-    if (!confirm("Retirer " + (m.name || "ce vendeur") + " ? Son accès sera coupé tout de suite.")) return;
-    try { await rpc("remove_member", { p_shop: cref.current.shop, p_user: m.user_id }); loadMembers(); } catch (e) { say(e.message); }
+  const inviteVendor = () => form("Nouveau vendeur", [
+    { k: "name", l: "Nom du vendeur" },
+    { k: "code", l: "Code d'accès que vous choisissez (6 caractères minimum : lettres, chiffres)" }], async r => {
+    const code = r.code.toUpperCase();
+    if (!r.name) return say("Entrez le nom du vendeur");
+    if (!/^[A-Z0-9_-]{6,20}$/.test(code)) return say("Code invalide : 6 à 20 caractères, lettres sans accent et chiffres seulement. Évitez un code facile à deviner.");
+    try {
+      await rpc("create_invite", { p_shop: cref.current.shop, p_name: r.name, p_code: code });
+      loadMembers();
+      say(<>Vendeur ajouté : {r.name}<br />Son code d'accès :<pre>{code}</pre>Donnez-lui ce code : il l'entre une seule fois dans Partage → Rejoindre un commerce. Il reste actif jusqu'à ce que vous le retiriez.<button className="big g" onClick={() => sendInvite(code, r.name)}>📲 Envoyer par WhatsApp</button></>);
+    } catch (e) { say(e.message); }
+  });
+  const editVendor = m => form("Vendeur", [{ k: "name", l: "Nom du vendeur", v: m.name }],
+    async r => { try { await rpc("set_member", { p_shop: cref.current.shop, p_user: m.user_id, p_name: r.name, p_active: m.active }); loadMembers(); } catch (e) { say(e.message); } },
+    async () => { try { await rpc("delete_member", { p_shop: cref.current.shop, p_user: m.user_id }); loadMembers(); } catch (e) { say(e.message); } });
+  const toggleVendor = async m => {
+    if (m.active && !confirm("Retirer l'accès de " + (m.name || "ce vendeur") + " ? Son accès sera coupé tout de suite.")) return;
+    try { await rpc("set_member", { p_shop: cref.current.shop, p_user: m.user_id, p_name: null, p_active: !m.active }); loadMembers(); } catch (e) { say(e.message); }
   };
+  const showInvite = i => say(<>Invitation en attente{i.name ? " : " + i.name : ""}<pre>{i.code}</pre>Elle reste valable jusqu'à ce que le vendeur l'utilise ou que vous l'annuliez.
+    <button className="big g" onClick={() => sendInvite(i.code, i.name)}>📲 Renvoyer par WhatsApp</button>
+    <button className="big r" onClick={async () => { try { await rpc("cancel_invite", { p_shop: cref.current.shop, p_code: i.code }); setMsg(null); loadMembers(); } catch (e) { say(e.message); } }}>🗑️ Annuler l'invitation</button></>);
 
   // ---- Affichage ----
   const low = S.prods.filter(p => p.stock <= p.min && !S.mute[p.id]).slice(0, 2);
@@ -690,8 +706,17 @@ export default function App() {
           {cl && cl.role === "owner" && <>
             <div className="cd"><div className="hi">☁️ Partage actif<small>Vous êtes le propriétaire • {net ? "🟢 synchronisé" : "🔴 hors connexion"}</small></div></div>
             <button className="big g" onClick={inviteVendor}>➕ Inviter un vendeur</button>
-            {members.filter(m => m.role === "manager" && m.active).map(m => (
-              <div className="row" key={m.user_id}><i>👤</i><div><b>{m.name || "Vendeur"}</b><small>Vendeur</small></div><button className="lnk" style={{ width: "auto" }} onClick={() => removeVendor(m)}>Retirer</button></div>
+            <div className="hi" style={{ fontSize: 20 }}>👥 Mes vendeurs</div>
+            {!members.length && !invs.length && <div className="cd sm">Aucun vendeur pour le moment.</div>}
+            {members.map(m => (
+              <div className="row" key={m.user_id} onClick={() => editVendor(m)} style={{ opacity: m.active ? 1 : 0.55 }}>
+                <i>{m.active ? "🧑‍💼" : "⛔"}</i>
+                <div><b>{m.name || "Vendeur sans nom"}</b><small>{m.phone ? m.phone + " • " : ""}{m.active ? "Actif" : "Accès retiré"} • touchez pour modifier</small></div>
+                <button className="lnk" style={{ width: "auto" }} onClick={e => { e.stopPropagation(); toggleVendor(m); }}>{m.active ? "Retirer" : "Réactiver"}</button>
+              </div>
+            ))}
+            {invs.map(i => (
+              <div className="row" key={i.code} onClick={() => showInvite(i)}><i>⏳</i><div><b>{i.name || "Invitation"}</b><small>En attente • code {i.code}</small></div></div>
             ))}
             <button className="lnk" onClick={() => { if (confirm("Arrêter le partage sur ce téléphone ? Vos données restent ici.")) leave("Partage arrêté sur ce téléphone."); }}>Me déconnecter du partage</button>
           </>}
