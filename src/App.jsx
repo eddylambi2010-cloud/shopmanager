@@ -109,7 +109,7 @@ const loadC = () => { try { return JSON.parse(localStorage.getItem("smc")) || nu
 const saveC = c => { try { c ? localStorage.setItem("smc", JSON.stringify(c)) : localStorage.removeItem("smc"); } catch {} };
 async function sb(path, { method = "GET", body, tok, prefer } = {}) {
   const h = { apikey: SBK, "Content-Type": "application/json" };
-  if (tok) h.Authorization = "Bearer " + tok;
+  h.Authorization = "Bearer " + (tok || SBK);
   if (prefer) h.Prefer = prefer;
   let r;
   try { r = await fetch(SBU + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }); }
@@ -198,6 +198,7 @@ export default function App() {
     return c.tok;
   };
   const rpc = async (fn, body) => sb("/rest/v1/rpc/" + fn, { method: "POST", tok: await tokOk(), body });
+  const prpc = (fn, body) => sb("/rest/v1/rpc/" + fn, { method: "POST", body }); // appel public, sans compte connecté
   const pull = async () => {
     const c = cref.current; if (!c || lock.current > 0) return;
     try {
@@ -310,17 +311,34 @@ export default function App() {
     } catch {}
     say("Code incorrect");
   };
-  const aCode = () => form("Code d'activation", [{ k: "v", l: "Code appareil du client" }, { k: "d", l: "Jours", t: "number", v: S.settings.days }], async r => {
+  const aCode = () => form("Code d'activation", [
+    { k: "v", l: "Code appareil du client" }, { k: "d", l: "Jours", t: "number", v: S.settings.days },
+    { k: "amt", l: "Montant payé (FCFA)", t: "number", v: S.settings.price }], async r => {
+    const device = r.v.trim();
+    let auto = false;
+    try { await rpc("admin_create_activation", { p_hash: S.h || ADM, p_device: device, p_days: r.d, p_amount: r.amt }); auto = true; } catch {}
     try {
       const k = await crypto.subtle.importKey("jwk", JSON.parse(S.sk), ECA, false, ["sign"]);
-      const c = r.d + "-" + b64(await crypto.subtle.sign(SG, k, enc(r.v.trim() + "|" + r.d)));
+      const c = r.d + "-" + b64(await crypto.subtle.sign(SG, k, enc(device + "|" + r.d)));
       try { navigator.clipboard.writeText(c); } catch {}
-      say(<>Code à envoyer au client (copié) :<pre>{c}</pre></>);
-    } catch { say("Erreur, code appareil invalide"); }
+      say(<>{auto ? <>✅ Activation automatique programmée : dès que la boutique du client ouvrira l'application avec Internet, son abonnement s'activera tout seul.<br />Code de secours (copié), à utiliser seulement si elle n'a pas Internet :</> : <>Code à envoyer au client (copié) — l'activation automatique n'a pas pu être programmée (vérifiez votre connexion) :</>}<pre>{c}</pre></>);
+    } catch { say(auto ? "Activation automatique programmée ✅ (le code de secours n'a pas pu être généré, code appareil invalide)" : "Erreur, code appareil invalide"); }
   });
   const aTarif = () => form("Tarifs et délais", [
     { k: "price", l: "Prix abonnement (FCFA)", t: "number", v: S.settings.price }, { k: "days", l: "Durée (jours)", t: "number", v: S.settings.days },
     { k: "grace", l: "Délai de grâce (jours)", t: "number", v: S.settings.grace }, { k: "demo", l: "Ventes gratuites", t: "number", v: S.settings.demo }], r => up(c => { c.settings = r; }));
+  const [stats, setStats] = useState(null), [shopStats, setShopStats] = useState(null), [statsErr, setStatsErr] = useState("");
+  const loadStats = async () => {
+    setStats(null); setShopStats(null); setStatsErr("");
+    try {
+      const hash = S.h || ADM;
+      const [st, sh] = await Promise.all([
+        prpc("admin_stats", { p_hash: hash }),
+        prpc("admin_shop_stats", { p_hash: hash }),
+      ]);
+      setStats(st); setShopStats(sh || []);
+    } catch (e) { setStatsErr(e.message); }
+  };
   const aPay = () => form("Moyens de paiement", [
     { k: "moov", l: "Moov Money", t: "tel", v: S.pay.moov }, { k: "airtel", l: "Airtel Money", t: "tel", v: S.pay.airtel },
     { k: "intl1", l: "Paiement international 1", v: S.pay.intl1 }, { k: "intl2", l: "Paiement international 2", v: S.pay.intl2 },
@@ -330,7 +348,9 @@ export default function App() {
     if ((await hs(r.o)) !== (S.h || ADM)) return say("Code actuel incorrect");
     if (r.n.length < 4) return say("Nouveau code trop court");
     if (r.n !== r.c) return say("Les deux codes ne sont pas pareils");
-    const h = await hs(r.n); up(c => { c.h = h; }); say("Code changé ✅");
+    const h = await hs(r.n);
+    try { await prpc("admin_sync_secret", { p_old_hash: S.h || ADM, p_new_hash: h }); } catch {}
+    up(c => { c.h = h; }); say("Code changé ✅");
   });
   const bk = () => {
     const { sk, adm, ...safe } = S; // la clé administrateur ne part jamais dans une sauvegarde
@@ -458,8 +478,9 @@ export default function App() {
         let d = null;
         try { d = await (await fetch("/api/check?reference=" + encodeURIComponent(ref))).json(); } catch { continue; }
         if (d && d.final) {
+          const sPrice = Sref.current.settings.price, sDays = Sref.current.settings.days, sDev = Sref.current.dev + "." + Sref.current.n;
           up(c => { c.payref = ""; if (d.success) c.until = Math.max(Date.now(), c.until) + c.settings.days * DAY; });
-          if (d.success) { home(); say("Paiement confirmé ✅ Abonnement activé !"); }
+          if (d.success) { prpc("log_mm_payment", { p_device: sDev, p_amount: sPrice, p_days: sDays }).catch(() => {}); home(); say("Paiement confirmé ✅ Abonnement activé !"); }
           else say("Le paiement a échoué ou a été refusé. Réessayez. Si vous avez été débité, contactez-nous.");
           return;
         }
@@ -470,6 +491,23 @@ export default function App() {
   useEffect(() => {
     const [ref, t] = (Sref.current.payref || "").split("|");
     if (ref && Date.now() - +t < 18e5) { setPaying(true); pollPay(ref).finally(() => setPaying(false)); }
+  }, []);
+  useEffect(() => {
+    const check = async () => {
+      const c = Sref.current, device = c.dev + "." + c.n;
+      try {
+        const r = await prpc("claim_activation", { p_device: device });
+        if (r && r.days) {
+          up(x => { x.until = Math.max(Date.now(), x.until) + r.days * DAY; x.n++; });
+          say("Abonnement activé automatiquement ✅ (" + r.days + " jours)");
+        }
+      } catch {}
+    };
+    check();
+    const iv = setInterval(check, 120000);
+    const vis = () => { if (!document.hidden) check(); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", vis); };
   }, []);
   const payerAbonnement = async () => {
     const tel = phone.replace(/\D/g, "");
@@ -816,8 +854,39 @@ export default function App() {
           </>}
         </>}
 
+        {cur === "stats" && <>
+          <div className="cd"><div className="hi">📊 Statistiques de la plateforme</div></div>
+          {statsErr && <div className="cd rd">{statsErr}<button className="lnk" onClick={loadStats}>🔄 Réessayer</button></div>}
+          {!stats && !statsErr && <div className="cd">⏳ Chargement…</div>}
+          {stats && <>
+            <div className="grid">
+              <div className="card"><i>🏪</i><b>Boutiques</b><span>{stats.shops}</span></div>
+              <div className="card"><i>🧑‍💼</i><b>Vendeurs actifs</b><span>{stats.vendors}</span></div>
+            </div>
+            <div className="cd">Gains aujourd'hui<div className="num gr">{f(stats.revenue_today)}</div></div>
+            <div className="two">
+              <div className="cd">7 jours<div className="num">{f(stats.revenue_week)}</div></div>
+              <div className="cd">30 jours<div className="num">{f(stats.revenue_month)}</div></div>
+            </div>
+          </>}
+          {shopStats && shopStats.length > 0 && <>
+            <div className="hi" style={{ fontSize: 20 }}>👥 Statistiques par vendeur (30 derniers jours)</div>
+            {shopStats.map(sh => (
+              <div className="cd" style={{ textAlign: "left" }} key={sh.shop_id}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><b>{sh.shop}</b><b className="gr">{f(sh.total_30d)}</b></div>
+                {(sh.by_vendor || []).map((v, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 15, opacity: .85, marginTop: 4 }}><span>{v.name}</span><span>{f(v.total)}</span></div>
+                ))}
+                {!sh.by_vendor?.length && <div className="sm">Aucune vente sur la période.</div>}
+              </div>
+            ))}
+          </>}
+          {shopStats && !shopStats.length && <div className="cd sm">Aucune boutique pour le moment.</div>}
+        </>}
+
         {cur === "admin" && <>
           <div className="cd"><div className="hi">⚙️ Administrateur</div></div>
+          <button className="big y" onClick={() => { go("stats"); loadStats(); }}>📊 Statistiques de la plateforme</button>
           <button className="big" onClick={aCode}>🔑 Générer un code d'activation</button>
           <button className="big" onClick={aTarif}>💲 Tarifs et délais</button>
           <button className="big" onClick={aPay}>💳 Moyens de paiement</button>
