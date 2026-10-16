@@ -28,6 +28,7 @@ select,input{width:100%;font:inherit;padding:14px;border-radius:12px;border:2px 
 .bars{display:flex;align-items:flex-end;gap:6px;height:120px}.bars div{flex:1;background:var(--a);border-radius:6px 6px 0 0;min-height:3px}.bars+.bars{height:auto;font-size:12px;text-align:center;margin-top:2px}.bars+.bars div{background:none}
 pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:12px;font:16px monospace}
 .net{font-size:15px;text-align:center;opacity:.85;margin:4px 0}.sm{font-size:15px;opacity:.75}
+.tbl{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}.tbl th{text-align:left;opacity:.7;font-weight:600;font-size:13px;border-bottom:2px solid #8886;padding:6px 4px}.tbl td{padding:7px 4px;border-bottom:1px solid #8883}.tbl th:nth-child(n+2),.tbl td:nth-child(n+2){text-align:right;white-space:nowrap}.tbl tfoot td{font-weight:800;border:0;padding-top:9px}
 .inst{display:flex;align-items:center;gap:14px;text-align:left}.inst img{border-radius:16px;box-shadow:0 3px 10px #0004;flex:none}.inst b{display:block;font-size:19px}.inst span{display:block;font-size:15px;opacity:.75;margin-top:2px}`;
 const PUB={"kty": "EC", "crv": "P-256", "x": "xzcuBLJW4NdJlBfwoZF5n4SbVYJivcabTG4U9SNyhHQ", "y": "Hm3OB2UBER4QyOqaf45D0r9d0fv1eLDko0b_-U1JEJE"},ENC='EoIMIHhMz9cBd2DsmAWL2l6BJCh4JZYNvIB3JGglGgfpbErOZzpeeJmvHH/NVcExIpBjWnolhOi4MuUJ07tCDueU9sCGXUuV5MhRZmCpIdTT9zd2VuwjW4vtcrwqrIdTcGb14cmOA/mY++9PJn8TLxlEbZTn+tk2aLilKTVhOmeFSDR0jxh7rLtF2osqKPVZv38zqyEEmQ1+PDbNibY7K9ScR9a7VmI1uoakDDCAP3IAYt1UlRJkaoRa8fRe0m5+/02aOk15gQ1HGLb8XF63AK9HVLLVlvmI2VYw6TZzwUVES/dHXUBbw7SExUNGG2OwyKRgIasKPsj7Hw==';
 const ADM='0982849bb3576bd57e217efb1d3627dc785bbb79b5e35a0c872418405f28a27b';
@@ -247,7 +248,7 @@ export default function App() {
   const [st, setSt] = useState([["home", {}]]);
   const [fm, setFm] = useState(null), [msg, setMsg] = useState(null);
   const [cart, setCart] = useState({}), [mode, setMode] = useState("paid"), [cu, setCu] = useState(0), [sec, setSec] = useState(0);
-  const [q, setQ] = useState(""), [per, setPer] = useState(1), [mp, setMp] = useState(1), [last, setLast] = useState(null);
+  const [q, setQ] = useState(""), [cf, setCf] = useState("all"), [per, setPer] = useState(1), [mp, setMp] = useState(1), [last, setLast] = useState(null);
   const [vt, setVt] = useState(""), [pend, setPend] = useState(null), [vin, setVin] = useState(""), [acode, setAcode] = useState("");
   const taps = useRef(0), tt = useRef(0);
   const [cur, P] = st[st.length - 1];
@@ -357,7 +358,13 @@ export default function App() {
       id ? () => { up(c => { c.custs = c.custs.filter(x => x.id !== id); }); back(); } : undefined);
   };
   const eBiz = () => form("Mon commerce", [{ k: "name", l: "Nom du commerce", v: S.biz.name }, { k: "tel", l: "Téléphone (sur les reçus)", t: "tel", v: S.biz.tel }], r => { if (r.name) up(c => { c.biz = r; }); });
-  const ent = (type, label) => form(label, [{ k: "a", l: "Montant (FCFA)", t: "number" }], r => { if (r.a > 0) up(c => { c.cash.push({ d: Date.now(), type, label, amt: r.a }); }); });
+  const ent = type => form(type === "out" ? "Nouvelle dépense" : "Entrée d'argent", [
+    { k: "label", l: type === "out" ? "Nature de la dépense (ex : Transport, Loyer, Électricité)" : "Motif de l'entrée (ex : Apport, Prêt)" },
+    { k: "a", l: "Montant (FCFA)", t: "number" },
+    { k: "note", l: "Détail (facultatif)" }], r => {
+    if (!r.label) return say(type === "out" ? "Précisez la nature de la dépense" : "Précisez le motif");
+    if (r.a > 0) up(c => { c.cash.push({ d: Date.now(), type, label: r.label, amt: r.a, ...(r.note ? { note: r.note } : {}) }); });
+  });
   // ---- Vente ----
   const add = id => { const p = S.prods.find(x => x.id === id); if ((cart[id] || 0) < p.stock) setCart({ ...cart, [id]: (cart[id] || 0) + 1 }); else say("Stock épuisé"); };
   const chg = (k, d) => { const c = { ...cart }; c[k] += d; if (c[k] <= 0) delete c[k]; else if (c[k] > S.prods.find(x => x.id == k).stock) return say("Stock épuisé"); setCart(c); };
@@ -588,6 +595,40 @@ export default function App() {
       </>
     );
   };
+  const cashView = () => {
+    const saleOf = x => (x.type === "in" && /^Vente/.test(x.label)) ? S.sales.find(v => v.paid && Math.abs(v.d - x.d) < 5000 && v.total === x.amt) : null;
+    const rows = [
+      ...S.cash.map(x => ({ d: x.d, x, sale: saleOf(x) })),
+      ...S.sales.filter(v => !v.paid).map(v => ({ d: v.d, sale: v, credit: true })),
+    ].sort((a, b) => b.d - a.d);
+    const shown = rows.filter(r => cf === "all" || (cf === "sales" && r.sale) || (cf === "out" && r.x && r.x.type === "out")).slice(0, 60);
+    const num = n => Math.round(n).toLocaleString("fr-FR");
+    return (
+      <>
+        <div className="cd">En caisse<div className={"num " + (cin - cout >= 0 ? "gr" : "rd")}>{f(cin - cout)}</div><span className="sm">Entrées {f(cin)} • Dépenses {f(cout)}</span></div>
+        <div className="two"><button onClick={() => ent("in")}>➕ Entrée</button><button onClick={() => ent("out")}>➖ Dépense</button></div>
+        <div className="tabs" style={{ marginTop: 10 }}>{[["all", "Tout"], ["sales", "🛒 Ventes"], ["out", "🔴 Dépenses"]].map(([v, l]) => <button key={v} className={cf === v ? "on" : ""} onClick={() => setCf(v)}>{l}</button>)}</div>
+        {shown.map((r, i) => r.sale ? (
+          <div className="cd" style={{ textAlign: "left" }} key={i}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{r.credit ? "📒 Vente à crédit" : "🟢 Vente"}</b><b className={r.credit ? "rd" : "gr"}>{r.credit ? "" : "+"}{f(r.sale.total)}</b></div>
+            <div className="sm">{dt(r.sale.d)}{r.sale.by ? " • par " + r.sale.by : ""}{r.credit ? " • " + ((S.custs.find(c => c.id === r.sale.cu) || {}).name || "client") : ""}</div>
+            <table className="tbl">
+              <thead><tr><th>Désignation</th><th>Qté vendue</th><th>P.U</th><th>Prix total</th></tr></thead>
+              <tbody>{r.sale.items.map((it, j) => <tr key={j}><td>{it.name}</td><td>{it.q}</td><td>{num(it.price)}</td><td>{num(it.q * it.price)}</td></tr>)}</tbody>
+              <tfoot><tr><td colSpan="3">TOTAL (FCFA)</td><td>{num(r.sale.total)}</td></tr></tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="row" key={i}>
+            <i>{r.x.type === "in" ? "🟢" : "🔴"}</i>
+            <div><b>{r.x.label}</b>{r.x.note && <small>{r.x.note}</small>}<small>{dt(r.x.d)}</small></div>
+            <b className={r.x.type === "in" ? "gr" : "rd"}>{r.x.type === "in" ? "+" : "−"}{f(r.x.amt)}</b>
+          </div>
+        ))}
+        {!shown.length && <div className="cd sm">Rien à afficher.</div>}
+      </>
+    );
+  };
   const subStatus = S.adm ? "Mode administrateur" : Date.now() < S.until ? "Actif jusqu'au " + new Date(S.until).toLocaleDateString("fr-FR")
     : act ? "Délai de grâce en cours" : S.sales.length < S.settings.demo ? "Essai gratuit : " + (S.settings.demo - S.sales.length) + " vente(s) restante(s)" : "Abonnement expiré";
 
@@ -679,13 +720,7 @@ export default function App() {
           {!list.length && <div className="cd">Aucun produit.</div>}
         </>}
 
-        {cur === "cash" && own && <>
-          <div className="cd">En caisse<div className={"num " + (cin - cout >= 0 ? "gr" : "rd")}>{f(cin - cout)}</div></div>
-          <div className="two"><button onClick={() => ent("in", "Entrée d'argent")}>➕ Entrée</button><button onClick={() => ent("out", "Dépense")}>➖ Dépense</button></div>
-          {[...S.cash].sort((a, b) => b.d - a.d).slice(0, 40).map((x, i) => (
-            <div className="row" key={i}><i>{x.type === "in" ? "🟢" : "🔴"}</i><div><b>{x.label}</b><small>{dt(x.d)}</small></div><b className={x.type === "in" ? "gr" : "rd"}>{x.type === "in" ? "+" : "−"}{f(x.amt)}</b></div>
-          ))}
-        </>}
+        {cur === "cash" && own && cashView()}
 
         {cur === "custs" && <>
           {own && <button className="big" onClick={() => eC(0)}>➕ Nouveau client</button>}
