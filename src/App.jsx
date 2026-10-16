@@ -28,10 +28,14 @@ select,input{width:100%;font:inherit;padding:14px;border-radius:12px;border:2px 
 .bars{display:flex;align-items:flex-end;gap:6px;height:120px}.bars div{flex:1;background:var(--a);border-radius:6px 6px 0 0;min-height:3px}.bars+.bars{height:auto;font-size:12px;text-align:center;margin-top:2px}.bars+.bars div{background:none}
 pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:12px;font:16px monospace}
 .net{font-size:15px;text-align:center;opacity:.85;margin:4px 0}.sm{font-size:15px;opacity:.75}
+.mic-fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:66px;height:66px;border-radius:50%;background:var(--y);color:#111;font-size:28px;border:0;box-shadow:0 8px 20px #0005;z-index:15;display:flex;align-items:center;justify-content:center}
 .tbl{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}.tbl th{text-align:left;opacity:.7;font-weight:600;font-size:13px;border-bottom:2px solid #8886;padding:6px 4px}.tbl td{padding:7px 4px;border-bottom:1px solid #8883}.tbl th:nth-child(n+2),.tbl td:nth-child(n+2){text-align:right;white-space:nowrap}.tbl tfoot td{font-weight:800;border:0;padding-top:9px}
 .inst{display:flex;align-items:center;gap:14px;text-align:left}.inst img{border-radius:16px;box-shadow:0 3px 10px #0004;flex:none}.inst b{display:block;font-size:19px}.inst span{display:block;font-size:15px;opacity:.75;margin-top:2px}`;
-const PUB={"kty": "EC", "crv": "P-256", "x": "xzcuBLJW4NdJlBfwoZF5n4SbVYJivcabTG4U9SNyhHQ", "y": "Hm3OB2UBER4QyOqaf45D0r9d0fv1eLDko0b_-U1JEJE"},ENC='EoIMIHhMz9cBd2DsmAWL2l6BJCh4JZYNvIB3JGglGgfpbErOZzpeeJmvHH/NVcExIpBjWnolhOi4MuUJ07tCDueU9sCGXUuV5MhRZmCpIdTT9zd2VuwjW4vtcrwqrIdTcGb14cmOA/mY++9PJn8TLxlEbZTn+tk2aLilKTVhOmeFSDR0jxh7rLtF2osqKPVZv38zqyEEmQ1+PDbNibY7K9ScR9a7VmI1uoakDDCAP3IAYt1UlRJkaoRa8fRe0m5+/02aOk15gQ1HGLb8XF63AK9HVLLVlvmI2VYw6TZzwUVES/dHXUBbw7SExUNGG2OwyKRgIasKPsj7Hw==';
-const ADM='0982849bb3576bd57e217efb1d3627dc785bbb79b5e35a0c872418405f28a27b';
+// Clé de signature RÉINITIALISÉE le 16/10/2026 (l'ancienne phrase secrète avait été oubliée).
+// Les codes d'activation déjà envoyés à des clients et PAS ENCORE utilisés doivent être régénérés.
+const PUB={"kty":"EC","x":"V0qsKy2MeQaurCOC99kkhz03T0jaSX1ozHxlBogEFv8","y":"sSd6jEcYEUwlyubBou083b3dyQQpE0K3nUrqH6xCHqE","crv":"P-256"},ENC='GkOhtlW9s3MDokhnYTSks1VL9bUO7KnwS/G00CEgmZJBDPvmWfAzoIr0PQ4GQT0pLCxNL60VOMFzKOwiqQZ56EXzRRe7FJRy+0Tt1os4u+FU/vOXJpSaXJ+Y+OWVeVSAcRWnYf9xIWKUboIALgE/alLA6aPQbhFB+4ZVzKnHrdMR2yCIEHG6rMbrR8usR0/fX+c0fWBRCx63PDo7wwd5ZW8ftFdqxPZHTipzElFDpr055CGLYnaAdPDyeWqRe2lEcSIeGkAgtQ5n0+NaAPlw3Ol8eZwuCthHDJZyDJ0Bj53ezvd6mstEXH3Rugi3l6L8x6X/nlFLyzjDlw==';
+// Nouveau code administrateur TEMPORAIRE : SHOP2026 — changez-le dès que possible (Admin → Changer mon code).
+const ADM='204d3a3d2901ca8818cd205a1ed68674ec63978a720e7e3d0f34ac493d6ca88e';
 const DAY = 864e5, today = () => new Date().setHours(0, 0, 0, 0);
 const f = n => Math.round(n).toLocaleString("fr-FR") + " FCFA";
 const nm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -256,6 +260,13 @@ export default function App() {
   const back = () => setSt(a => (a.length > 1 ? a.slice(0, -1) : a));
   const home = () => setSt([["home", {}]]);
   const say = t => setMsg(t);
+  const shareApp = async () => {
+    const url = location.origin, title = "SHOPMANAGER — Gérez votre commerce simplement";
+    const text = `Gérez vos ventes, votre stock et votre caisse avec SHOPMANAGER : ${url}`;
+    try { if (navigator.share) { await navigator.share({ title, text, url }); return; } } catch { return; }
+    try { await navigator.clipboard.writeText(text); say("Lien copié ✅ Collez-le où vous voulez le partager."); }
+    catch { wa("", text); }
+  };
   const installApp = async () => {
     if (DIP) {
       const e = DIP; DIP = null;
@@ -638,8 +649,9 @@ export default function App() {
       <header>
         {st.length > 1 ? <button onClick={back}>⬅️</button> : <span style={{ width: 52 }} />}
         <b onClick={tapTitle}>SHOPMANAGER</b>
-        <button onClick={() => go("voice")}>🎤</button>
+        <button onClick={shareApp} aria-label="Partager l'application">📤</button>
       </header>
+      <button className="mic-fab" onClick={() => go("voice")} aria-label="Assistant vocal">🎤</button>
       <main>
         {cur === "home" && <>
           <div className="hi">Bonjour 👋<small>{S.biz.name} • {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</small></div>
