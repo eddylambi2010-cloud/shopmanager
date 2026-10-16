@@ -27,7 +27,8 @@ select,input{width:100%;font:inherit;padding:14px;border-radius:12px;border:2px 
 .num{font-size:38px;font-weight:800}.cd{background:var(--c);border-radius:20px;padding:16px;margin:10px 0;text-align:center}.gr{color:var(--g)}.rd{color:var(--r)}
 .bars{display:flex;align-items:flex-end;gap:6px;height:120px}.bars div{flex:1;background:var(--a);border-radius:6px 6px 0 0;min-height:3px}.bars+.bars{height:auto;font-size:12px;text-align:center;margin-top:2px}.bars+.bars div{background:none}
 pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:12px;font:16px monospace}
-.net{font-size:15px;text-align:center;opacity:.85;margin:4px 0}.sm{font-size:15px;opacity:.75}`;
+.net{font-size:15px;text-align:center;opacity:.85;margin:4px 0}.sm{font-size:15px;opacity:.75}
+.inst{display:flex;align-items:center;gap:14px;text-align:left}.inst img{border-radius:16px;box-shadow:0 3px 10px #0004;flex:none}.inst b{display:block;font-size:19px}.inst span{display:block;font-size:15px;opacity:.75;margin-top:2px}`;
 const PUB={"kty": "EC", "crv": "P-256", "x": "xzcuBLJW4NdJlBfwoZF5n4SbVYJivcabTG4U9SNyhHQ", "y": "Hm3OB2UBER4QyOqaf45D0r9d0fv1eLDko0b_-U1JEJE"},ENC='EoIMIHhMz9cBd2DsmAWL2l6BJCh4JZYNvIB3JGglGgfpbErOZzpeeJmvHH/NVcExIpBjWnolhOi4MuUJ07tCDueU9sCGXUuV5MhRZmCpIdTT9zd2VuwjW4vtcrwqrIdTcGb14cmOA/mY++9PJn8TLxlEbZTn+tk2aLilKTVhOmeFSDR0jxh7rLtF2osqKPVZv38zqyEEmQ1+PDbNibY7K9ScR9a7VmI1uoakDDCAP3IAYt1UlRJkaoRa8fRe0m5+/02aOk15gQ1HGLb8XF63AK9HVLLVlvmI2VYw6TZzwUVES/dHXUBbw7SExUNGG2OwyKRgIasKPsj7Hw==';
 const ADM='0982849bb3576bd57e217efb1d3627dc785bbb79b5e35a0c872418405f28a27b';
 const DAY = 864e5, today = () => new Date().setHours(0, 0, 0, 0);
@@ -76,6 +77,22 @@ const DEF = {
   pay: { moov: "065575201", airtel: "077044782", intl1: "", intl2: "", payurl: "", apiurl: "", apikey: "", wa: "" },
 };
 const TUT = ["🛒 Pour vendre, appuyez ici.", "📦 Pour voir vos produits, appuyez ici.", "💰 Pour voir votre argent, appuyez ici."];
+
+// ---- Installation sur l'écran d'accueil (icône + ouverture directe dans l'application) ----
+let DIP = null;
+if (typeof window !== "undefined") {
+  const addTag = (tag, attrs) => { const e = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); document.head.appendChild(e); };
+  if (!document.querySelector('link[rel="manifest"]')) addTag("link", { rel: "manifest", href: "/pwa/manifest.json" });
+  if (!document.querySelector('meta[name="theme-color"]')) addTag("meta", { name: "theme-color", content: "#0B2A5B" });
+  addTag("link", { rel: "apple-touch-icon", href: "/pwa/180" });
+  addTag("link", { rel: "icon", type: "image/png", href: "/pwa/32" });
+  addTag("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
+  addTag("meta", { name: "mobile-web-app-capable", content: "yes" });
+  addTag("meta", { name: "apple-mobile-web-app-title", content: "ShopManager" });
+  addTag("meta", { name: "apple-mobile-web-app-status-bar-style", content: "black" });
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); DIP = e; window.dispatchEvent(new Event("sm-inst")); });
+  window.addEventListener("appinstalled", () => { DIP = null; try { localStorage.setItem("smi", "1"); } catch {} window.dispatchEvent(new Event("sm-inst")); });
+}
 
 // ---- Partage en ligne (Supabase) : propriétaire + vendeurs ----
 const SBU = "https://gucmuncvxomywlivukon.supabase.co", SBK = "sb_publishable_h9nqIwAXf1uv3SUd1bgv8Q_xwNK1XAW";
@@ -149,6 +166,16 @@ export default function App() {
   const lock = useRef(0), polling = useRef(""), clr = useRef(null);
   clr.current = cl;
   const own = !cl || cl.role === "owner";
+  const [, bump] = useState(0), [hideInst, setHideInst] = useState(false);
+  useEffect(() => {
+    const h = () => bump(x => x + 1);
+    window.addEventListener("sm-inst", h);
+    try { if (navigator.serviceWorker) navigator.serviceWorker.register("/pwa/sw.js", { scope: "/" }).catch(() => {}); } catch {}
+    return () => window.removeEventListener("sm-inst", h);
+  }, []);
+  const standalone = typeof window !== "undefined" && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+  const wasInstalled = (() => { try { return localStorage.getItem("smi") === "1"; } catch { return false; } })();
 
   const leave = text => {
     const was = cref.current; cref.current = null; saveC(null); setCl(null); setMembers([]); setInvs([]);
@@ -228,6 +255,15 @@ export default function App() {
   const back = () => setSt(a => (a.length > 1 ? a.slice(0, -1) : a));
   const home = () => setSt([["home", {}]]);
   const say = t => setMsg(t);
+  const installApp = async () => {
+    if (DIP) {
+      const e = DIP; DIP = null;
+      try { e.prompt(); await e.userChoice; } catch {}
+      bump(x => x + 1); return;
+    }
+    if (isIOS) return say(<>Pour installer sur iPhone :<br />1. Touchez le bouton <b>Partager</b> ⬆️ (en bas de Safari)<br />2. Choisissez <b>Sur l'écran d'accueil</b><br />3. Touchez <b>Ajouter</b></>);
+    say(<>Pour installer : ouvrez le menu <b>⋮</b> de votre navigateur, puis touchez <b>Installer l'application</b> (ou <b>Ajouter à l'écran d'accueil</b>).</>);
+  };
   const form = (title, fields, ok, del) => setFm({ title, fields, ok, del, id: Math.random() });
   const dcode = S.dev + "." + S.n;
   const act = S.adm || Date.now() < S.until + S.settings.grace * DAY;
@@ -566,6 +602,13 @@ export default function App() {
       <main>
         {cur === "home" && <>
           <div className="hi">Bonjour 👋<small>{S.biz.name} • {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</small></div>
+          {!standalone && !wasInstalled && !hideInst && (
+            <div className="cd">
+              <div className="inst"><img src="/pwa/192" alt="" width="64" height="64" /><div><b>Installer SHOPMANAGER</b><span>Une icône sur votre écran : un clic et vous êtes dans l'application.</span></div></div>
+              <button className="big g" onClick={installApp}>⬇️ Installer l'application</button>
+              <button className="lnk" onClick={() => setHideInst(true)}>Plus tard</button>
+            </div>
+          )}
           {cl && <div className="net">{net ? "🟢 Synchronisé" : "🔴 Pas de connexion : les ventes sont impossibles"}{cl.role === "manager" ? " • Vendeur" : " • Propriétaire"}</div>}
           {S.seen < TUT.length && <div className="cd">{TUT[S.seen]}<button className="lnk" onClick={() => up(c => { c.seen++; })}>OK, compris</button></div>}
           {low.map(p => <div className="alert" key={p.id}>⚠️ {p.name} : il reste {p.stock}<button onClick={() => up(c => { c.mute[p.id] = 1; })}>👍 Compris</button></div>)}
