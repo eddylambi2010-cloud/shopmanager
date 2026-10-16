@@ -280,6 +280,8 @@ export default function App() {
   const form = (title, fields, ok, del) => setFm({ title, fields, ok, del, id: Math.random() });
   const dcode = S.dev + "." + S.n;
   const act = S.adm || Date.now() < S.until + S.settings.grace * DAY;
+  const daysLeft = Math.ceil((S.until - Date.now()) / DAY);
+  const expSoon = !S.adm && Date.now() < S.until && daysLeft <= 3;
   const locked = !act && S.sales.length >= S.settings.demo;
   useEffect(() => { if (locked && !["sub", "done", "share"].includes(cur)) setSt([["sub", {}]]); }, [locked, cur]);
   useEffect(() => { if (cur === "share" && cl && cl.role === "owner") loadMembers(); }, [cur, cl && cl.shop]);
@@ -703,6 +705,7 @@ export default function App() {
           {cl && <div className="net">{net ? "🟢 Synchronisé" : "🔴 Pas de connexion : les ventes sont impossibles"}{cl.role === "manager" ? " • Vendeur" : " • Propriétaire"}</div>}
           {S.seen < TUT.length && <div className="cd">{TUT[S.seen]}<button className="lnk" onClick={() => up(c => { c.seen++; })}>OK, compris</button></div>}
           {low.map(p => <div className="alert" key={p.id}>⚠️ {p.name} : il reste {p.stock}<button onClick={() => up(c => { c.mute[p.id] = 1; })}>👍 Compris</button></div>)}
+          {expSoon && <div className="alert">⏳ Abonnement : {daysLeft <= 0 ? "expire aujourd'hui" : daysLeft === 1 ? "expire demain" : "expire dans " + daysLeft + " jours"}{own ? <button onClick={() => go("sub")}>💳 Renouveler</button> : <button onClick={() => go("sub")}>ℹ️ Voir</button>}</div>}
           {own && <div className="cd">Ventes d'aujourd'hui<div className="num">{f(sum(tdy, s => s.total))}</div></div>}
           <div className="g4">
             <button onClick={() => go("sell")}><i>🛒</i>Vendre</button>
