@@ -78,7 +78,7 @@ const DEF = {
     { id: 3, sec: 3, name: "Savon", icon: "🧼", price: 600, cost: 400, stock: 3, min: 5 },
   ],
   custs: [{ id: 1, name: "Jean (démo)", tel: "", debt: 0 }],
-  sales: [], cash: [], until: 0, seen: 0, mute: {}, adm: 0, h: "", sk: "", dev: rid(), n: 0, msg: "", payref: "",
+  sales: [], cash: [], until: 0, seen: 0, mute: {}, adm: 0, h: "", sk: "", dev: rid(), n: 0, msg: "", payref: "", pq: [],
   pay: { moov: "065575201", airtel: "077044782", intl1: "", intl2: "", payurl: "", apiurl: "", apikey: "", wa: "" },
 };
 const TUT = ["🛒 Pour vendre, appuyez ici.", "📦 Pour voir vos produits, appuyez ici.", "💰 Pour voir votre argent, appuyez ici."];
@@ -206,7 +206,10 @@ export default function App() {
       const rows = await sb("/rest/v1/shops?id=eq." + c.shop + "&select=data,version", { tok });
       if (!rows || !rows[0]) return leave("Votre accès à ce commerce a été retiré.");
       c.ver = rows[0].version;
-      setS(s => ({ ...s, ...rows[0].data }));
+      setS(s => {
+        const merged = { ...s, ...rows[0].data, pq: s.pq || [] };
+        return (merged.pq || []).reduce((acc, pend) => applySale(acc, pend.items, pend.paid, pend.cu, pend.d, pend.localId), merged);
+      });
       setNet(true);
     } catch (e) { if (e.fatal) leave("Session expirée. Reconnectez-vous via Partage."); else setNet(false); }
   };
@@ -233,6 +236,34 @@ export default function App() {
     Sref.current = nx; setS(nx);
     if (changed && cc0) pushUp(fn).catch(e => { say("Non enregistré en ligne : " + e.message); pull(); });
   };
+  const applyLocal = fn => { const nx = structuredClone(Sref.current); fn(nx); Sref.current = nx; setS(nx); };
+  const applySale = (base, items, paid, cu, d, localId) => {
+    const out = structuredClone(base);
+    const full = items.map(it => { const p = base.prods.find(x => x.id === it.id) || {}; return { id: it.id, name: p.name || "?", q: it.q, price: p.price || 0, cost: p.cost || 0 }; });
+    full.forEach(i => { const p = out.prods.find(x => x.id === i.id); if (p) p.stock -= i.q; });
+    const total = sum(full, i => i.q * i.price), cost = sum(full, i => i.q * i.cost);
+    out.sales = [...out.sales, { id: localId, d, items: full, total, cost, paid, cu, offline: true }];
+    if (paid) out.cash = [...out.cash, { d, type: "in", label: "Vente (hors ligne) : " + full.map(i => i.q + " " + i.name).join(", "), amt: total }];
+    else { const c = out.custs.find(x => x.id === cu); if (c) c.debt += total; }
+    return out;
+  };
+  const flushQueue = async () => {
+    const c0 = cref.current; if (!c0 || lock.current > 0 || !(Sref.current.pq || []).length) return;
+    lock.current++;
+    try {
+      while ((Sref.current.pq || []).length) {
+        const pend = Sref.current.pq[0];
+        try {
+          await rpc("record_sale", { p_shop: c0.shop, p_sale: { items: pend.items, paid: pend.paid, cu: pend.cu } });
+          applyLocal(c => { c.pq = c.pq.filter(x => x.localId !== pend.localId); });
+        } catch (e) {
+          if (/connexion/i.test(e.message)) return; // toujours hors ligne, on réessaiera plus tard
+          applyLocal(c => { c.pq = c.pq.filter(x => x.localId !== pend.localId); }); // erreur définitive (ex: stock insuffisant) : on retire, à régler manuellement
+          say("Une vente en attente n'a pas pu être synchronisée : " + e.message);
+        }
+      }
+    } finally { lock.current--; await pull(); }
+  };
   const connect = async j => {
     const m = await sb("/rest/v1/members?user_id=eq." + j.user.id + "&active=eq.true&select=shop_id,role,name&limit=1", { tok: j.access_token });
     if (!m || !m[0]) throw new Error("Aucun commerce lié à ce compte");
@@ -242,12 +273,14 @@ export default function App() {
   };
   useEffect(() => {
     if (!cl) return;
-    const t = () => pull();
+    const t = () => pull().then(flushQueue);
     t();
     const iv = setInterval(t, 12000);
     const vis = () => { if (!document.hidden) t(); };
+    const onl = () => t();
     document.addEventListener("visibilitychange", vis);
-    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", vis); };
+    window.addEventListener("online", onl);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", vis); window.removeEventListener("online", onl); };
   }, [cl && cl.shop]);
 
   const [st, setSt] = useState([["home", {}]]);
@@ -406,13 +439,28 @@ export default function App() {
     if (!act && S.sales.length >= S.settings.demo) return go("sub");
     if (mode === "credit" && !cu) return say("Choisissez le client 👤");
     if (cl) {
-      let sale;
+      const itemsReq = ks.map(k => ({ id: +k, q: cart[k] }));
       setWait(true); lock.current++;
-      try { sale = await rpc("record_sale", { p_shop: cref.current.shop, p_sale: { items: ks.map(k => ({ id: +k, q: cart[k] })), paid: mode === "paid", cu: mode === "credit" ? cu : 0 } }); }
-      catch (e) { return say(e.message); }
-      finally { lock.current--; setWait(false); }
-      await pull();
-      setLast(sale); setCart({}); setCu(0); setMode("paid"); setSt(a => [...a.slice(0, -1), ["done", {}]]);
+      try {
+        const sale = await rpc("record_sale", { p_shop: cref.current.shop, p_sale: { items: itemsReq, paid: mode === "paid", cu: mode === "credit" ? cu : 0 } });
+        lock.current--; setWait(false);
+        await pull();
+        setLast(sale); setCart({}); setCu(0); setMode("paid"); setSt(a => [...a.slice(0, -1), ["done", {}]]);
+      } catch (e) {
+        lock.current--; setWait(false);
+        if (!/connexion/i.test(e.message)) return say(e.message);
+        const bad = itemsReq.find(it => it.q > (S.prods.find(p => p.id === it.id)?.stock ?? 0));
+        if (bad) return say("Stock insuffisant (vérifié sur ce téléphone)");
+        const localId = "off_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        const d = Date.now(), paidFlag = mode === "paid", cuVal = mode === "credit" ? cu : 0;
+        applyLocal(c => {
+          const nx = applySale(c, itemsReq, paidFlag, cuVal, d, localId);
+          Object.assign(c, nx);
+          c.pq = [...(c.pq || []), { localId, items: itemsReq, paid: paidFlag, cu: cuVal, d }];
+        });
+        setLast(Sref.current.sales[Sref.current.sales.length - 1]); setCart({}); setCu(0); setMode("paid"); setSt(a => [...a.slice(0, -1), ["done", {}]]);
+        say("🔴 Pas de connexion : vente enregistrée sur ce téléphone, elle se synchronisera toute seule au retour d'Internet.");
+      }
       return;
     }
     const items = ks.map(k => { const p = S.prods.find(x => x.id == k); return { id: p.id, name: p.name, q: cart[k], price: p.price, cost: p.cost }; });
@@ -661,7 +709,7 @@ export default function App() {
         <div className="tabs" style={{ marginTop: 10 }}>{[["all", "Tout"], ["sales", "🛒 Ventes"], ["out", "🔴 Dépenses"]].map(([v, l]) => <button key={v} className={cf === v ? "on" : ""} onClick={() => setCf(v)}>{l}</button>)}</div>
         {shown.map((r, i) => r.sale ? (
           <div className="cd" style={{ textAlign: "left" }} key={i}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{r.credit ? "📒 Vente à crédit" : "🟢 Vente"}</b><b className={r.credit ? "rd" : "gr"}>{r.credit ? "" : "+"}{f(r.sale.total)}</b></div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{r.sale.offline ? "⏳ " : ""}{r.credit ? "Vente à crédit" : "Vente"}</b><b className={r.credit ? "rd" : "gr"}>{r.credit ? "" : "+"}{f(r.sale.total)}</b></div>
             <div className="sm">{dt(r.sale.d)}{r.sale.by ? " • par " + r.sale.by : ""}{r.credit ? " • " + ((S.custs.find(c => c.id === r.sale.cu) || {}).name || "client") : ""}</div>
             <table className="tbl">
               <thead><tr><th>Désignation</th><th>Qté vendue</th><th>P.U</th><th>Prix total</th></tr></thead>
@@ -702,7 +750,8 @@ export default function App() {
               <button className="lnk" onClick={() => setHideInst(true)}>Plus tard</button>
             </div>
           )}
-          {cl && <div className="net">{net ? "🟢 Synchronisé" : "🔴 Pas de connexion : les ventes sont impossibles"}{cl.role === "manager" ? " • Vendeur" : " • Propriétaire"}</div>}
+          {cl && <div className="net">{net ? "🟢 Synchronisé" : "🟠 Pas de connexion : les ventes restent possibles et se synchroniseront au retour d'Internet"}{cl.role === "manager" ? " • Vendeur" : " • Propriétaire"}</div>}
+          {cl && (S.pq || []).length > 0 && <div className="cd" style={{ borderLeft: "5px solid var(--y)" }}>⏳ {S.pq.length} vente(s) en attente de synchronisation<button className="lnk" onClick={flushQueue}>🔄 Réessayer maintenant</button></div>}
           {S.seen < TUT.length && <div className="cd">{TUT[S.seen]}<button className="lnk" onClick={() => up(c => { c.seen++; })}>OK, compris</button></div>}
           {low.map(p => <div className="alert" key={p.id}>⚠️ {p.name} : il reste {p.stock}<button onClick={() => up(c => { c.mute[p.id] = 1; })}>👍 Compris</button></div>)}
           {expSoon && <div className="alert">⏳ Abonnement : {daysLeft <= 0 ? "expire aujourd'hui" : daysLeft === 1 ? "expire demain" : "expire dans " + daysLeft + " jours"}{own ? <button onClick={() => go("sub")}>💳 Renouveler</button> : <button onClick={() => go("sub")}>ℹ️ Voir</button>}</div>}
@@ -753,7 +802,7 @@ export default function App() {
         </>}
 
         {cur === "done" && last && <>
-          <div className="cd"><div className="num gr">✅</div><div className="hi">Vente enregistrée<small>{f(last.total)} • {last.paid ? "Payé" : "À crédit"}</small></div></div>
+          <div className="cd"><div className="num gr">✅</div><div className="hi">Vente enregistrée<small>{f(last.total)} • {last.paid ? "Payé" : "À crédit"}{last.offline ? " • ⏳ en attente de synchronisation" : ""}</small></div></div>
           <pre>{recTxt(last, S.biz)}</pre>
           <button className="big g" onClick={() => { const c = S.custs.find(x => x.id === last.cu); wa(c ? c.tel : "", recTxt(last, S.biz)); }}>📲 Envoyer le reçu (WhatsApp)</button>
           <button className="big" onClick={() => setSt([["home", {}], ["sell", {}]])}>🛒 Nouvelle vente</button>
