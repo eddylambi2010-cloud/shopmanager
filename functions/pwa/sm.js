@@ -26,9 +26,25 @@ const MANIFEST = {
     { src: "/pwa/maskable", sizes: "512x512", type: "image/png", purpose: "maskable" },
   ],
 };
-const SW = `self.addEventListener("install", () => self.skipWaiting());
+const SW = `const CACHE = "sm-shell-v2";
+self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", () => {});`;
+self.addEventListener("fetch", event => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return; // jamais mettre en cache le paiement
+  if (url.pathname.includes("supabase.co")) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(req);
+    const network = fetch(req).then(res => { if (res && res.ok) cache.put(req, res.clone()); return res; }).catch(() => null);
+    if (cached) { network; return cached; } // affiche le cache tout de suite, rafraîchit en arrière-plan
+    const res = await network;
+    return res || cached || new Response("Hors connexion", { status: 503 });
+  })());
+});`;
 
 export async function onRequestGet({ params }) {
   const n = params.name;
