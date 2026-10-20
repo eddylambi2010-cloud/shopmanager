@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:12px;fo
 const PUB={"kty":"EC","x":"V0qsKy2MeQaurCOC99kkhz03T0jaSX1ozHxlBogEFv8","y":"sSd6jEcYEUwlyubBou083b3dyQQpE0K3nUrqH6xCHqE","crv":"P-256"},ENC='GkOhtlW9s3MDokhnYTSks1VL9bUO7KnwS/G00CEgmZJBDPvmWfAzoIr0PQ4GQT0pLCxNL60VOMFzKOwiqQZ56EXzRRe7FJRy+0Tt1os4u+FU/vOXJpSaXJ+Y+OWVeVSAcRWnYf9xIWKUboIALgE/alLA6aPQbhFB+4ZVzKnHrdMR2yCIEHG6rMbrR8usR0/fX+c0fWBRCx63PDo7wwd5ZW8ftFdqxPZHTipzElFDpr055CGLYnaAdPDyeWqRe2lEcSIeGkAgtQ5n0+NaAPlw3Ol8eZwuCthHDJZyDJ0Bj53ezvd6mstEXH3Rugi3l6L8x6X/nlFLyzjDlw==';
 // Nouveau code administrateur TEMPORAIRE : SHOP2026 — changez-le dès que possible (Admin → Changer mon code).
 const ADM='204d3a3d2901ca8818cd205a1ed68674ec63978a720e7e3d0f34ac493d6ca88e';
-const DAY = 864e5, today = () => new Date().setHours(0, 0, 0, 0);
+const DAY = 864e5, TRIAL_DAYS = 7, today = () => new Date().setHours(0, 0, 0, 0);
 const f = n => Math.round(n).toLocaleString("fr-FR") + " FCFA";
 const nm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const nid = a => Math.max(0, ...a.map(x => x.id)) + 1;
@@ -70,7 +70,7 @@ const spk = t => { try { const u = new SpeechSynthesisUtterance(t); u.lang = "fr
 const recTxt = (s, biz) => `SHOPMANAGER\nReçu de vente\n${biz.name}${biz.tel ? "\nTél : " + biz.tel : ""}\n${new Date(s.d).toLocaleString("fr-FR")}\n\n${s.items.map(i => `${i.q} x ${i.name} = ${f(i.q * i.price)}`).join("\n")}\n\nTOTAL : ${f(s.total)}\n${s.paid ? "PAYÉ ✅" : "À CRÉDIT"}\nMerci !`;
 const DEF = {
   biz: { name: "Ma boutique", tel: "" },
-  settings: { price: 5000, days: 30, grace: 2, demo: 10 },
+  settings: { price: 5000, days: 30, grace: 2 },
   secs: [],
   prods: [],
   custs: [],
@@ -154,7 +154,11 @@ function FormModal({ fm, close }) {
 }
 export default function App() {
   const [S, setS] = useState(() => {
-    try { const x = JSON.parse(localStorage.getItem("sm")); return x ? { ...DEF, ...x, pay: { ...DEF.pay, ...x.pay } } : DEF; } catch { return DEF; }
+    try {
+      const x = JSON.parse(localStorage.getItem("sm"));
+      if (x) return { ...DEF, ...x, pay: { ...DEF.pay, ...x.pay }, trialEnd: x.trialEnd || Date.now() + TRIAL_DAYS * DAY };
+      return { ...DEF, trialEnd: Date.now() + TRIAL_DAYS * DAY };
+    } catch { return { ...DEF, trialEnd: Date.now() + TRIAL_DAYS * DAY }; }
   });
   const Sref = useRef(S); Sref.current = S;
   useEffect(() => { try { localStorage.setItem("sm", JSON.stringify(S)); } catch {} }, [S]);
@@ -308,10 +312,12 @@ export default function App() {
   };
   const form = (title, fields, ok, del) => setFm({ title, fields, ok, del, id: Math.random() });
   const dcode = S.dev + "." + S.n;
-  const act = S.adm || Date.now() < S.until + S.settings.grace * DAY;
+  const act = S.adm || Date.now() < S.until + S.settings.grace * DAY || Date.now() < (S.trialEnd || 0);
   const daysLeft = Math.ceil((S.until - Date.now()) / DAY);
   const expSoon = !S.adm && Date.now() < S.until && daysLeft <= 3;
-  const locked = !act && S.sales.length >= S.settings.demo;
+  const trialDaysLeft = Math.ceil(((S.trialEnd || 0) - Date.now()) / DAY);
+  const trialSoon = !S.adm && S.until === 0 && Date.now() < (S.trialEnd || 0) && trialDaysLeft <= 3;
+  const locked = !act;
   useEffect(() => { if (locked && !["sub", "done", "share"].includes(cur)) setSt([["sub", {}]]); }, [locked, cur]);
   useEffect(() => { if (cur === "share" && cl && cl.role === "owner") loadMembers(); }, [cur, cl && cl.shop]);
   const since = d => S.sales.filter(s => s.d >= d);
@@ -357,7 +363,7 @@ export default function App() {
   });
   const aTarif = () => form("Tarifs et délais", [
     { k: "price", l: "Prix abonnement (FCFA)", t: "number", v: S.settings.price }, { k: "days", l: "Durée (jours)", t: "number", v: S.settings.days },
-    { k: "grace", l: "Délai de grâce (jours)", t: "number", v: S.settings.grace }, { k: "demo", l: "Ventes gratuites", t: "number", v: S.settings.demo }], r => up(c => { c.settings = r; }));
+    { k: "grace", l: "Délai de grâce (jours)", t: "number", v: S.settings.grace }], r => up(c => { c.settings = r; }));
   const [stats, setStats] = useState(null), [shopStats, setShopStats] = useState(null), [statsErr, setStatsErr] = useState("");
   const loadStats = async () => {
     setStats(null); setShopStats(null); setStatsErr("");
@@ -432,7 +438,7 @@ export default function App() {
   const chg = (k, d) => { const c = { ...cart }; c[k] += d; if (c[k] <= 0) delete c[k]; else if (c[k] > S.prods.find(x => x.id == k).stock) return say("Stock épuisé"); setCart(c); };
   const sell = async () => {
     const ks = Object.keys(cart); if (!ks.length || wait) return;
-    if (!act && S.sales.length >= S.settings.demo) return go("sub");
+    if (!act) return go("sub");
     if (mode === "credit" && !cu) return say("Choisissez le client 👤");
     if (cl) {
       const itemsReq = ks.map(k => ({ id: +k, q: cart[k] }));
@@ -745,7 +751,9 @@ export default function App() {
     );
   };
   const subStatus = S.adm ? "Mode administrateur" : Date.now() < S.until ? "Actif jusqu'au " + new Date(S.until).toLocaleDateString("fr-FR")
-    : act ? "Délai de grâce en cours" : S.sales.length < S.settings.demo ? "Essai gratuit : " + (S.settings.demo - S.sales.length) + " vente(s) restante(s)" : "Abonnement expiré";
+    : S.until > 0 && Date.now() < S.until + S.settings.grace * DAY ? "Délai de grâce en cours"
+    : Date.now() < (S.trialEnd || 0) ? "Essai gratuit : encore " + Math.max(1, Math.ceil(((S.trialEnd || 0) - Date.now()) / DAY)) + " jour(s)"
+    : "Abonnement expiré";
 
   return (
     <>
@@ -771,6 +779,7 @@ export default function App() {
           {S.seen < TUT.length && <div className="cd">{TUT[S.seen]}<button className="lnk" onClick={() => up(c => { c.seen++; })}>OK, compris</button></div>}
           {low.map(p => <div className="alert" key={p.id}>⚠️ {p.name} : il reste {p.stock}<button onClick={() => up(c => { c.mute[p.id] = 1; })}>👍 Compris</button></div>)}
           {expSoon && <div className="alert">⏳ Abonnement : {daysLeft <= 0 ? "expire aujourd'hui" : daysLeft === 1 ? "expire demain" : "expire dans " + daysLeft + " jours"}{own ? <button onClick={() => go("sub")}>💳 Renouveler</button> : <button onClick={() => go("sub")}>ℹ️ Voir</button>}</div>}
+          {trialSoon && <div className="alert">⏳ Essai gratuit : {trialDaysLeft <= 0 ? "se termine aujourd'hui" : trialDaysLeft === 1 ? "se termine demain" : "se termine dans " + trialDaysLeft + " jours"}{own ? <button onClick={() => go("sub")}>💳 S'abonner</button> : <button onClick={() => go("sub")}>ℹ️ Voir</button>}</div>}
           {own && <div className="cd">Ventes d'aujourd'hui<div className="num">{f(sum(tdy, s => s.total))}</div></div>}
           <div className="g4">
             <button onClick={() => go("sell")}><i>🛒</i>Vendre</button>
