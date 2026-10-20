@@ -667,6 +667,40 @@ export default function App() {
       {S.secs.map(s => <button key={s.id} className={sec === s.id ? "on" : ""} onClick={() => setSec(s.id)}>{s.icon} {s.name}</button>)}
     </div>
   );
+  const cashView = () => {
+    const saleOf = x => (x.type === "in" && /^Vente/.test(x.label)) ? S.sales.find(v => v.paid && Math.abs(v.d - x.d) < 5000 && v.total === x.amt) : null;
+    const rows = [
+      ...S.cash.map(x => ({ d: x.d, x, sale: saleOf(x) })),
+      ...S.sales.filter(v => !v.paid).map(v => ({ d: v.d, sale: v, credit: true })),
+    ].sort((a, b) => b.d - a.d);
+    const shown = rows.filter(r => cf === "all" || (cf === "sales" && r.sale) || (cf === "out" && r.x && r.x.type === "out")).slice(0, 60);
+    const num = n => Math.round(n).toLocaleString("fr-FR");
+    return (
+      <>
+        <div className="cd">En caisse<div className={"num " + (cin - cout >= 0 ? "gr" : "rd")}>{f(cin - cout)}</div><span className="sm">Entrées {f(cin)} • Dépenses {f(cout)}</span></div>
+        <div className="two"><button onClick={() => ent("in")}>➕ Entrée</button><button onClick={() => ent("out")}>➖ Dépense</button></div>
+        <div className="tabs" style={{ marginTop: 10 }}>{[["all", "Tout"], ["sales", "🛒 Ventes"], ["out", "🔴 Dépenses"]].map(([v, l]) => <button key={v} className={cf === v ? "on" : ""} onClick={() => setCf(v)}>{l}</button>)}</div>
+        {shown.map((r, i) => r.sale ? (
+          <div className="cd" style={{ textAlign: "left" }} key={i}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{r.sale.offline ? "⏳ " : ""}{r.credit ? "Vente à crédit" : "Vente"}</b><b className={r.credit ? "rd" : "gr"}>{r.credit ? "" : "+"}{f(r.sale.total)}</b></div>
+            <div className="sm">{dt(r.sale.d)}{r.sale.by ? " • par " + r.sale.by : ""}{r.credit ? " • " + ((S.custs.find(c => c.id === r.sale.cu) || {}).name || "client") : ""}</div>
+            <table className="tbl">
+              <thead><tr><th>Désignation</th><th>Qté vendue</th><th>P.U</th><th>Prix total</th></tr></thead>
+              <tbody>{r.sale.items.map((it, j) => <tr key={j}><td>{it.name}</td><td>{it.q}</td><td>{num(it.price)}</td><td>{num(it.q * it.price)}</td></tr>)}</tbody>
+              <tfoot><tr><td colSpan="3">TOTAL (FCFA)</td><td>{num(r.sale.total)}</td></tr></tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="row" key={i}>
+            <i>{r.x.type === "in" ? "🟢" : "🔴"}</i>
+            <div><b>{r.x.label}</b>{r.x.note && <small>{r.x.note}</small>}<small>{dt(r.x.d)}</small></div>
+            <b className={r.x.type === "in" ? "gr" : "rd"}>{r.x.type === "in" ? "+" : "−"}{f(r.x.amt)}</b>
+          </div>
+        ))}
+        {!shown.length && <div className="cd sm">Rien à afficher.</div>}
+      </>
+    );
+  };
   const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
   const periodRange = per => {
     const now = new Date();
