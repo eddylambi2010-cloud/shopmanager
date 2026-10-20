@@ -71,13 +71,9 @@ const recTxt = (s, biz) => `SHOPMANAGER\nReçu de vente\n${biz.name}${biz.tel ? 
 const DEF = {
   biz: { name: "Ma boutique", tel: "" },
   settings: { price: 5000, days: 30, grace: 2, demo: 10 },
-  secs: [{ id: 1, name: "Alimentation", icon: "🍚" }, { id: 2, name: "Boissons", icon: "🥤" }, { id: 3, name: "Beauté", icon: "🧼" }],
-  prods: [
-    { id: 1, sec: 1, name: "Riz 5 kg", icon: "🍚", price: 8000, cost: 6500, stock: 20, min: 5 },
-    { id: 2, sec: 2, name: "Jus", icon: "🧃", price: 500, cost: 300, stock: 40, min: 10 },
-    { id: 3, sec: 3, name: "Savon", icon: "🧼", price: 600, cost: 400, stock: 3, min: 5 },
-  ],
-  custs: [{ id: 1, name: "Jean (démo)", tel: "", debt: 0 }],
+  secs: [],
+  prods: [],
+  custs: [],
   sales: [], cash: [], until: 0, seen: 0, mute: {}, adm: 0, h: "", sk: "", dev: rid(), n: 0, msg: "", payref: "", pq: [],
   pay: { moov: "065575201", airtel: "077044782", intl1: "", intl2: "", payurl: "", apiurl: "", apikey: "", wa: "" },
 };
@@ -286,7 +282,7 @@ export default function App() {
   const [st, setSt] = useState([["home", {}]]);
   const [fm, setFm] = useState(null), [msg, setMsg] = useState(null);
   const [cart, setCart] = useState({}), [mode, setMode] = useState("paid"), [cu, setCu] = useState(0), [sec, setSec] = useState(0);
-  const [q, setQ] = useState(""), [cf, setCf] = useState("all"), [per, setPer] = useState(1), [mp, setMp] = useState(1), [last, setLast] = useState(null);
+  const [q, setQ] = useState(""), [cf, setCf] = useState("all"), [per, setPer] = useState("day"), [mp, setMp] = useState(1), [last, setLast] = useState(null);
   const [vt, setVt] = useState(""), [pend, setPend] = useState(null), [vin, setVin] = useState(""), [acode, setAcode] = useState("");
   const taps = useRef(0), tt = useRef(0);
   const [cur, P] = st[st.length - 1];
@@ -401,7 +397,7 @@ export default function App() {
     if (!secs.length) return eS();
     form(id ? "Modifier le produit" : "Nouveau produit", [
       { k: "name", l: "Nom", v: p.name }, { k: "icon", l: "Icône (emoji)", v: p.icon || "📦" },
-      { k: "sec", l: "Section", v: p.sec || sid || secs[0].id, o: secs.map(s => [s.id, s.name]) },
+      { k: "sec", l: "Catégorie", v: p.sec || sid || secs[0].id, o: secs.map(s => [s.id, s.name]) },
       { k: "cost", l: "Prix d'achat", t: "number", v: p.cost }, { k: "price", l: "Prix de vente", t: "number", v: p.price },
       { k: "stock", l: "Quantité en stock", t: "number", v: p.stock }, { k: "min", l: "Stock minimum (alerte)", t: "number", v: p.min ?? 3 }],
       r => { if (!r.name) return; up(c => { if (id) { Object.assign(c.prods.find(x => x.id === id), r); delete c.mute[id]; } else c.prods.push({ id: nid(c.prods), ...r }); }); },
@@ -409,13 +405,13 @@ export default function App() {
   };
   const eS = id => {
     const s = S.secs.find(x => x.id === id) || {};
-    form(id ? "Modifier la section" : "Nouvelle section", [{ k: "name", l: "Nom (ex : Boissons)", v: s.name }, { k: "icon", l: "Icône (emoji)", v: s.icon || "📁" }],
+    form(id ? "Modifier la catégorie" : "Nouvelle catégorie", [{ k: "name", l: "Nom (ex : Boissons)", v: s.name }, { k: "icon", l: "Icône (emoji)", v: s.icon || "📁" }],
       r => {
         if (!r.name) return;
         if (id) up(c => { Object.assign(c.secs.find(x => x.id === id), r); });
         else { const n = nid(S.secs); up(c => { c.secs.push({ id: n, ...r }); }); setTimeout(() => eP(0, n, [...S.secs, { id: n, ...r }]), 150); }
       },
-      id ? () => { if (S.prods.some(p => p.sec === id)) say("Déplacez ou supprimez d'abord les produits de cette section"); else { up(c => { c.secs = c.secs.filter(x => x.id !== id); }); setSec(0); } } : undefined);
+      id ? () => { if (S.prods.some(p => p.sec === id)) say("Déplacez ou supprimez d'abord les produits de cette catégorie"); else { up(c => { c.secs = c.secs.filter(x => x.id !== id); }); setSec(0); } } : undefined);
   };
   const eC = id => {
     const c0 = S.custs.find(x => x.id === id) || {};
@@ -671,8 +667,28 @@ export default function App() {
       {S.secs.map(s => <button key={s.id} className={sec === s.id ? "on" : ""} onClick={() => setSec(s.id)}>{s.icon} {s.name}</button>)}
     </div>
   );
+  const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+  const periodRange = per => {
+    const now = new Date();
+    if (per === "day") {
+      const start = today();
+      return { start, end: start + DAY, label: "Aujourd'hui, " + cap(new Date(start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })) };
+    }
+    if (per === "week") {
+      const dow = (now.getDay() + 6) % 7; // 0 = lundi
+      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(now.getDate() - dow);
+      const end = new Date(start); end.setDate(start.getDate() + 7);
+      const fmt = x => x.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+      return { start: start.getTime(), end: end.getTime(), label: "Semaine du " + fmt(start) + " au " + fmt(new Date(end.getTime() - DAY)) };
+    }
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const lastDay = new Date(end.getTime() - DAY).getDate();
+    return { start: start.getTime(), end: end.getTime(), label: cap(start.toLocaleDateString("fr-FR", { month: "long" })) + " (du 1er au " + lastDay + ")" };
+  };
   const repView = () => {
-    const rs = since(today() - (per - 1) * DAY);
+    const { start, end, label } = periodRange(per);
+    const rs = S.sales.filter(s => s.d >= start && s.d < end);
     const tot = sum(rs, s => s.total), gain = sum(rs, s => s.total - s.cost);
     const days = Array.from({ length: 7 }, (_, i) => today() - (6 - i) * DAY);
     const vals = days.map(d => sum(S.sales.filter(s => s.d >= d && s.d < d + DAY), s => s.total));
@@ -682,8 +698,8 @@ export default function App() {
     const by = {}; rs.forEach(s => { if (s.by) by[s.by] = (by[s.by] || 0) + s.total; });
     return (
       <>
-        <div className="tabs">{[[1, "Aujourd'hui"], [7, "7 jours"], [30, "30 jours"]].map(([v, l]) => <button key={v} className={per === v ? "on" : ""} onClick={() => setPer(v)}>{l}</button>)}</div>
-        <div className="cd">Ventes<div className="num">{f(tot)}</div>Bénéfice<div className="num gr">{f(gain)}</div><span className="sm">{rs.length} vente(s)</span></div>
+        <div className="tabs">{[["day", "Jour"], ["week", "Semaine"], ["month", "Mois"]].map(([v, l]) => <button key={v} className={per === v ? "on" : ""} onClick={() => setPer(v)}>{l}</button>)}</div>
+        <div className="cd"><div className="sm">{label}</div>Ventes<div className="num">{f(tot)}</div>Bénéfice<div className="num gr">{f(gain)}</div><span className="sm">{rs.length} vente(s)</span></div>
         <div className="cd">
           <div className="bars">{vals.map((v, i) => <div key={i} style={{ height: Math.max(3, v / mx * 120) }} />)}</div>
           <div className="bars">{days.map((d, i) => <div key={i}>{new Date(d).toLocaleDateString("fr-FR", { weekday: "short" }).slice(0, 3)}</div>)}</div>
@@ -691,40 +707,6 @@ export default function App() {
         {tops.length > 0 && <div className="cd"><b>🏆 Les plus vendus</b>{tops.map(([n, v]) => <div key={n}>{n} : {v}</div>)}</div>}
         {Object.keys(by).length > 0 && <div className="cd"><b>👤 Par vendeur</b>{Object.entries(by).map(([n, v]) => <div key={n}>{n} : {f(v)}</div>)}</div>}
         <div className="cd">Les clients vous doivent<div className="num rd">{f(sum(S.custs, c => c.debt))}</div></div>
-      </>
-    );
-  };
-  const cashView = () => {
-    const saleOf = x => (x.type === "in" && /^Vente/.test(x.label)) ? S.sales.find(v => v.paid && Math.abs(v.d - x.d) < 5000 && v.total === x.amt) : null;
-    const rows = [
-      ...S.cash.map(x => ({ d: x.d, x, sale: saleOf(x) })),
-      ...S.sales.filter(v => !v.paid).map(v => ({ d: v.d, sale: v, credit: true })),
-    ].sort((a, b) => b.d - a.d);
-    const shown = rows.filter(r => cf === "all" || (cf === "sales" && r.sale) || (cf === "out" && r.x && r.x.type === "out")).slice(0, 60);
-    const num = n => Math.round(n).toLocaleString("fr-FR");
-    return (
-      <>
-        <div className="cd">En caisse<div className={"num " + (cin - cout >= 0 ? "gr" : "rd")}>{f(cin - cout)}</div><span className="sm">Entrées {f(cin)} • Dépenses {f(cout)}</span></div>
-        <div className="two"><button onClick={() => ent("in")}>➕ Entrée</button><button onClick={() => ent("out")}>➖ Dépense</button></div>
-        <div className="tabs" style={{ marginTop: 10 }}>{[["all", "Tout"], ["sales", "🛒 Ventes"], ["out", "🔴 Dépenses"]].map(([v, l]) => <button key={v} className={cf === v ? "on" : ""} onClick={() => setCf(v)}>{l}</button>)}</div>
-        {shown.map((r, i) => r.sale ? (
-          <div className="cd" style={{ textAlign: "left" }} key={i}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{r.sale.offline ? "⏳ " : ""}{r.credit ? "Vente à crédit" : "Vente"}</b><b className={r.credit ? "rd" : "gr"}>{r.credit ? "" : "+"}{f(r.sale.total)}</b></div>
-            <div className="sm">{dt(r.sale.d)}{r.sale.by ? " • par " + r.sale.by : ""}{r.credit ? " • " + ((S.custs.find(c => c.id === r.sale.cu) || {}).name || "client") : ""}</div>
-            <table className="tbl">
-              <thead><tr><th>Désignation</th><th>Qté vendue</th><th>P.U</th><th>Prix total</th></tr></thead>
-              <tbody>{r.sale.items.map((it, j) => <tr key={j}><td>{it.name}</td><td>{it.q}</td><td>{num(it.price)}</td><td>{num(it.q * it.price)}</td></tr>)}</tbody>
-              <tfoot><tr><td colSpan="3">TOTAL (FCFA)</td><td>{num(r.sale.total)}</td></tr></tfoot>
-            </table>
-          </div>
-        ) : (
-          <div className="row" key={i}>
-            <i>{r.x.type === "in" ? "🟢" : "🔴"}</i>
-            <div><b>{r.x.label}</b>{r.x.note && <small>{r.x.note}</small>}<small>{dt(r.x.d)}</small></div>
-            <b className={r.x.type === "in" ? "gr" : "rd"}>{r.x.type === "in" ? "+" : "−"}{f(r.x.amt)}</b>
-          </div>
-        ))}
-        {!shown.length && <div className="cd sm">Rien à afficher.</div>}
       </>
     );
   };
@@ -773,6 +755,7 @@ export default function App() {
         {cur === "sell" && <>
           <input placeholder="🔍 Chercher un produit" value={q} onChange={e => setQ(e.target.value)} />
           {secTabs}
+          {!S.prods.length && own && <div className="cd">Ajoutez votre premier produit pour commencer à vendre.<button className="big g" onClick={() => go("prods")}>📦 Aller dans Produits</button></div>}
           <div className="grid">
             {list.map(p => (
               <div className="card" key={p.id} onClick={() => add(p.id)}>
@@ -810,10 +793,10 @@ export default function App() {
         </>}
 
         {cur === "prods" && <>
-          {own && <div className="two"><button onClick={() => eP(0, sec)}>➕ Produit</button><button onClick={() => eS()}>📁 Section</button></div>}
+          {own && <div className="two"><button onClick={() => eP(0, sec)}>➕ Produit</button><button onClick={() => eS()}>📁 Catégorie</button></div>}
           <input placeholder="🔍 Chercher" value={q} onChange={e => setQ(e.target.value)} />
           {secTabs}
-          {own && sec > 0 && <button className="lnk" onClick={() => eS(sec)}>✏️ Modifier cette section</button>}
+          {own && sec > 0 && <button className="lnk" onClick={() => eS(sec)}>✏️ Modifier cette catégorie</button>}
           {list.map(p => (
             <div className="row" key={p.id} onClick={() => own && eP(p.id)}>
               <i>{p.icon}</i><div><b>{p.name}</b><small>{f(p.price)} • Stock : {p.stock}</small></div>{p.stock <= p.min && <span>⚠️</span>}
